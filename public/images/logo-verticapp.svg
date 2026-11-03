@@ -1,0 +1,17 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 240 60" fill="none">
+  <g transform="translate(4, 4)">
+    <rect width="52" height="52" rx="14" fill="#0E221C" />
+    <rect x="0.75" y="0.75" width="50.5" height="50.5" rx="13.25" stroke="#00F0FF" stroke-opacity="0.3" stroke-width="1.5" />
+    <!-- Torso -->
+    <path d="M26 8C28 15 29.5 21 26 32C22.5 21 24 15 26 8Z" fill="#F3ECDF" />
+    <!-- Brazos -->
+    <path d="M16 24L23 34M36 24L29 34" stroke="#F3ECDF" stroke-width="3" stroke-linecap="round" />
+    <!-- Cabeza -->
+    <circle cx="26" cy="40" r="3.8" fill="#EE724C" />
+    <!-- Piso -->
+    <line x1="18" y1="46" x2="34" y2="46" stroke="#00F0FF" stroke-width="2" stroke-linecap="round" stroke-opacity="0.8" />
+  </g>
+  <!-- Text -->
+  <text x="68" y="33" font-family="system-ui, -apple-system, sans-serif" font-size="23" font-weight="800" fill="#0F172A" letter-spacing="-0.5px">Vertic<tspan fill="#EE724C" font-style="italic" font-family="Georgia, serif">App</tspan></text>
+  <text x="69" y="47" font-family="system-ui, -apple-system, sans-serif" font-size="8.5" font-weight="700" fill="#0D9488" letter-spacing="1.2px">180° NEURAL AXIS AI</text>
+</svg>

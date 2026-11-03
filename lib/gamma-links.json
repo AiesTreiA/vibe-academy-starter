@@ -1,0 +1,60 @@
+{
+  "sellers": [
+    {
+      "name": "CATA",
+      "coupon": "CATA33",
+      "discount_pct": 33,
+      "valid_until": "2026-08-24",
+      "url": "https://gamma.app/docs/Cata-Deja-de-Construir-Solamente-los-Productos-de-Otros-v4dz84nu7evhy8h?mode=doc"
+    },
+    {
+      "name": "MARI",
+      "coupon": "MARI33",
+      "discount_pct": 33,
+      "valid_until": "2026-08-24",
+      "url": "https://gamma.app/docs/MARI-Deja-de-Construir-Solamente-los-Productos-de-Otros-nxrlagozh2bjeqa?mode=doc"
+    },
+    {
+      "name": "ALONDRA",
+      "coupon": "ALONDRA33",
+      "discount_pct": 33,
+      "valid_until": "2026-08-24",
+      "url": "https://gamma.app/docs/Alondra-Deja-de-Construir-Solamente-los-Productos-de-Otros-lqzmsnoxt0nbtuy?mode=doc"
+    },
+    {
+      "name": "DAMIAN",
+      "coupon": "DAMIAN33",
+      "discount_pct": 33,
+      "valid_until": "2026-08-24",
+      "url": "https://gamma.app/docs/DAMIAN-Deja-de-Construir-Solamente-los-Productos-de-Otros-w4b1mo67hvi2wdx?mode=doc"
+    },
+    {
+      "name": "TAMI",
+      "coupon": "TAMI33",
+      "discount_pct": 33,
+      "valid_until": "2026-08-24",
+      "url": "https://gamma.app/docs/Tami-Deja-de-Construir-Solamente-los-Productos-de-Otros-q5zjv7qi5sbaywg?mode=doc"
+    },
+    {
+      "name": "GALLETA",
+      "coupon": "GALLETA33",
+      "discount_pct": 33,
+      "valid_until": "2026-08-24",
+      "url": "https://gamma.app/docs/GALLETA-Deja-de-Construir-Solamente-los-Productos-de-Otros-vcnf9t8xkge9c53?mode=doc"
+    },
+    {
+      "name": "MILA",
+      "coupon": "MILA33",
+      "discount_pct": 33,
+      "valid_until": "2026-08-24",
+      "url": "https://gamma.app/docs/MILA-Deja-de-Construir-Solamente-los-Productos-de-Otros-g89unua2rfedrhw?mode=doc"
+    },
+    {
+      "name": "SALOCIN",
+      "coupon": "SALOCIN33",
+      "discount_pct": 33,
+      "valid_until": "2026-08-24",
+      "url": "https://gamma.app/docs/SALOCIN-Deja-de-Construir-Solamente-los-Productos-de-Otros-gc9ww37iqm9q5fg?mode=doc"
+    }
+  ]
+}

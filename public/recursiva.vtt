@@ -1,0 +1,49 @@
+WEBVTT
+
+1
+00:00:07.000 --> 00:00:12.000
+Inicialización del entorno del bot RPA en Python.
+
+2
+00:00:12.000 --> 00:00:18.000
+Apertura del navegador automatizado y carga del portal I-Med.
+
+3
+00:00:18.000 --> 00:00:24.000
+Ingreso seguro de credenciales y autenticación en la plataforma.
+
+4
+00:00:24.000 --> 00:00:31.000
+Acceso al panel de control y carga de la base de datos de licencias de CCU.
+
+5
+00:00:31.000 --> 00:00:38.000
+Extracción de registros pendientes de procesar desde PostgreSQL.
+
+6
+00:00:38.000 --> 00:00:46.000
+Lectura y validación sintáctica de la primera licencia médica.
+
+7
+00:00:46.000 --> 00:00:54.000
+Automatización del llenado de campos del paciente en el formulario I-Med.
+
+8
+00:00:54.000 --> 00:01:02.000
+Simulación de tipeo y navegación humana para evitar bloqueos del portal.
+
+9
+00:01:02.000 --> 00:01:10.000
+Manejo automático de popups, ventanas de advertencia y confirmación.
+
+10
+00:01:10.000 --> 00:01:18.000
+Envío del formulario y captura del código de respuesta aprobado/rechazado.
+
+11
+00:01:18.000 --> 00:01:23.000
+Actualización en tiempo real del estado de la licencia en la base de datos local.
+
+12
+00:01:23.000 --> 00:01:26.000
+Cierre seguro de sesión y reporte de optimización finalizado.

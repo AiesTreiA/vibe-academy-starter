@@ -1,0 +1,554 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Los Niños y la Huerta: Guía Práctica de Cultivo Familiar - Pamela Gutiérrez</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Lora:ital,wght@0,400;0,500;0,600;0,700;1,400&family=Playfair+Display:ital,wght@0,700;0,800;1,400;1,700&display=swap" rel="stylesheet">
+  
+  <style>
+    :root {
+      --primary: #1c352d;
+      --primary-light: #2b4c3f;
+      --secondary: #e6dfd5;
+      --accent: #dca370;
+      --accent-light: #fdfaf6;
+      --text: #22332c;
+      --text-muted: #55665e;
+      --bg-overlay: rgba(254, 253, 250, 0.90);
+    }
+    
+    * {
+      box-sizing: border-box;
+    }
+    
+    body {
+      font-family: 'Lora', Georgia, serif;
+      line-height: 1.8;
+      color: var(--text);
+      /* Bright, glowing background with high-brightness garden image overlay */
+      background-image: linear-gradient(var(--bg-overlay), var(--bg-overlay)), url('/images/garden-bg.jpg');
+      background-size: cover;
+      background-position: center;
+      background-attachment: fixed;
+      margin: 0;
+      padding: 40px 20px;
+    }
+    
+    .container {
+      max-width: 850px;
+      margin: 0 auto;
+      background: rgba(255, 255, 255, 0.97);
+      padding: 50px 60px;
+      border-radius: 16px;
+      box-shadow: 0 10px 40px rgba(28, 53, 45, 0.06);
+      border: 1px solid rgba(28, 53, 45, 0.05);
+    }
+    
+    .header-actions {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      margin-bottom: 40px;
+      border-bottom: 1px solid rgba(28, 53, 45, 0.1);
+      padding-bottom: 20px;
+    }
+    
+    .btn-print {
+      background-color: var(--primary-light);
+      color: white;
+      padding: 12px 24px;
+      text-decoration: none;
+      border-radius: 30px;
+      font-family: sans-serif;
+      font-size: 0.9em;
+      font-weight: 600;
+      cursor: pointer;
+      border: none;
+      box-shadow: 0 4px 10px rgba(43, 76, 63, 0.15);
+      transition: all 0.2s ease;
+      display: flex;
+      align-items: center;
+      gap: 8px;
+    }
+    
+    .btn-print:hover {
+      background-color: var(--primary);
+      transform: translateY(-1px);
+      box-shadow: 0 6px 15px rgba(43, 76, 63, 0.25);
+    }
+    
+    .brand-indicator {
+      font-family: 'Playfair Display', serif;
+      font-style: italic;
+      color: var(--primary-light);
+      font-size: 0.95em;
+    }
+    
+    /* Multipage screen separation */
+    .page {
+      padding-bottom: 50px;
+      margin-bottom: 50px;
+      border-bottom: 2px dashed rgba(28, 53, 45, 0.12);
+      position: relative;
+    }
+    
+    .page:last-child {
+      border-bottom: none;
+      margin-bottom: 0;
+      padding-bottom: 0;
+    }
+    
+    h1, h2, h3 {
+      color: var(--primary);
+      font-family: 'Playfair Display', serif;
+      font-weight: 700;
+      margin-top: 1.2em;
+    }
+    
+    h1 {
+      font-size: 2.6em;
+      text-align: center;
+      line-height: 1.2;
+      margin-top: 0.5em;
+      margin-bottom: 10px;
+    }
+    
+    .meta {
+      text-align: center;
+      font-style: italic;
+      color: var(--text-muted);
+      margin-bottom: 40px;
+      font-size: 1.05em;
+    }
+    
+    .intro-block {
+      background-color: var(--accent-light);
+      border-left: 4px solid var(--accent);
+      padding: 25px 30px;
+      border-radius: 0 8px 8px 0;
+      margin: 30px 0;
+      font-style: italic;
+    }
+    
+    .intro-block p {
+      margin: 0;
+      font-size: 1.1em;
+      color: var(--primary);
+    }
+    
+    .benefits-grid {
+      display: grid;
+      gap: 25px;
+      margin: 30px 0;
+    }
+    
+    .benefit-card {
+      background: #faf9f6;
+      border: 1px solid rgba(28, 53, 45, 0.05);
+      padding: 25px;
+      border-radius: 8px;
+    }
+    
+    .benefit-card h4 {
+      margin: 0 0 10px 0;
+      font-family: 'Playfair Display', serif;
+      font-size: 1.25em;
+      color: var(--primary-light);
+      display: flex;
+      align-items: center;
+      gap: 10px;
+    }
+    
+    .benefit-card p {
+      margin: 0;
+      font-size: 0.95em;
+      color: var(--text);
+    }
+    
+    /* Page 2: Calendar Cards */
+    .calendar-card {
+      background: #ffffff;
+      border: 1px solid rgba(28, 53, 45, 0.1);
+      border-radius: 12px;
+      padding: 30px;
+      margin: 35px 0;
+      box-shadow: 0 4px 15px rgba(0, 0, 0, 0.02);
+    }
+    
+    .calendar-card.winter {
+      border-left: 5px solid #7c98b3;
+    }
+    
+    .calendar-card.spring {
+      border-left: 5px solid var(--accent);
+    }
+    
+    .calendar-header {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      margin-bottom: 20px;
+      border-bottom: 1px solid rgba(28, 53, 45, 0.08);
+      padding-bottom: 10px;
+    }
+    
+    .calendar-header h3 {
+      margin: 0;
+      font-size: 1.4em;
+    }
+    
+    .calendar-header .icon {
+      font-size: 1.6em;
+    }
+    
+    .calendar-table {
+      width: 100%;
+      border-collapse: collapse;
+      margin-top: 15px;
+      font-size: 0.9em;
+    }
+    
+    .calendar-table th, .calendar-table td {
+      padding: 12px 15px;
+      text-align: left;
+      border-bottom: 1px solid rgba(28, 53, 45, 0.06);
+    }
+    
+    .calendar-table th {
+      background-color: var(--accent-light);
+      color: var(--primary);
+      font-weight: 700;
+      font-family: sans-serif;
+      font-size: 0.8em;
+      text-transform: uppercase;
+      letter-spacing: 0.5px;
+    }
+    
+    .calendar-table tr:hover {
+      background-color: rgba(28, 53, 45, 0.01);
+    }
+    
+    /* Page 3: Steps & Journal */
+    .step {
+      background-color: #fafcfb;
+      padding: 25px 30px;
+      border-radius: 8px;
+      border-left: 4px solid var(--accent);
+      margin: 25px 0;
+    }
+    
+    .step h3 {
+      margin-top: 0;
+      font-size: 1.3em;
+    }
+    
+    .journal-box {
+      border: 2px solid var(--secondary);
+      background: #fafaf8;
+      border-radius: 12px;
+      padding: 30px;
+      margin-top: 30px;
+    }
+    
+    .journal-row {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 20px;
+      margin-bottom: 20px;
+    }
+    
+    .journal-row span {
+      font-family: 'Lora', Georgia, serif;
+      font-size: 0.95em;
+      color: var(--primary);
+    }
+    
+    .journal-drawing {
+      margin: 25px 0;
+    }
+    
+    .drawing-area {
+      border: 2px dashed rgba(28, 53, 45, 0.15);
+      border-radius: 8px;
+      height: 200px;
+      background: white;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      color: var(--text-muted);
+      font-size: 0.9em;
+      font-style: italic;
+    }
+    
+    .journal-notes {
+      margin-top: 20px;
+    }
+    
+    .dotted-line {
+      border-bottom: 1px dotted rgba(28, 53, 45, 0.3);
+      height: 35px;
+      margin: 0;
+    }
+    
+    .page-footer {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      font-size: 0.75em;
+      color: var(--text-muted);
+      border-top: 1px solid rgba(28, 53, 45, 0.08);
+      padding-top: 15px;
+      margin-top: 50px;
+      font-family: sans-serif;
+      text-transform: uppercase;
+      letter-spacing: 1px;
+    }
+    
+    /* Print media styling */
+    @media print {
+      body {
+        background: none !important;
+        background-image: none !important;
+        padding: 0;
+        color: #000;
+      }
+      
+      .container {
+        box-shadow: none;
+        padding: 0;
+        max-width: 100%;
+        background: transparent;
+        border: none;
+      }
+      
+      .btn-print {
+        display: none;
+      }
+      
+      .page {
+        page-break-after: always;
+        break-after: page;
+        border-bottom: none;
+        padding-bottom: 0;
+        margin-bottom: 0;
+      }
+      
+      .page:last-child {
+        page-break-after: avoid;
+        break-after: avoid;
+      }
+      
+      .calendar-card {
+        box-shadow: none;
+        border: 1px solid #ccc;
+      }
+      
+      .drawing-area {
+        border: 1px dashed #999;
+      }
+    }
+  </style>
+</head>
+<body>
+  <div class="container">
+    
+    <!-- Action Header -->
+    <div class="header-actions">
+      <span class="brand-indicator">Pamela Gutiérrez · Pedagogía en la Naturaleza</span>
+      <button class="btn-print" onclick="window.print()">🖨️ Imprimir / Guardar PDF</button>
+    </div>
+    
+    <!-- PAGE 1: INTRODUCCIÓN Y BENEFICIOS -->
+    <div class="page">
+      <h1>Los Niños y la Huerta:<br>Guía Práctica de Cultivo Familiar</h1>
+      <div class="meta">Por Pamela Gutiérrez Troncoso - Terapeuta y Pedagoga</div>
+      
+      <div class="intro-block">
+        <p>Sembrar una semilla y cuidarla hasta que se convierta en alimento o flor es una de las experiencias pedagógicas más profundas que puede vivir un niño. La huerta familiar estimula la paciencia, el sentido de responsabilidad y despierta el asombro de manera espontánea.</p>
+      </div>
+      
+      <p>El trabajo en contacto con la tierra conecta a los niños con los ciclos orgánicos de la vida. En una época marcada por las pantallas y la inmediatez, la huerta ofrece una lección invaluable: las cosas hermosas y valiosas requieren tiempo, cuidado y constancia para florecer.</p>
+  
+      <h2>Beneficios del Trabajo en la Huerta</h2>
+      <div class="benefits-grid">
+        <div class="benefit-card">
+          <h4>🧠 Desarrollo Cognitivo</h4>
+          <p>Comprensión empírica de causa y efecto, matemáticas prácticas (distancias y profundidad de siembra) y biología aplicada al observar los ciclos de germinación y crecimiento de las plantas.</p>
+        </div>
+        <div class="benefit-card">
+          <h4>🌱 Integración Sensorial</h4>
+          <p>Contacto directo con diferentes texturas de tierra húmeda, compostaje de hojas secas, estimulación olfativa a través de hierbas aromáticas y desarrollo de la motricidad fina al manipular semillas minúsculas.</p>
+        </div>
+        <div class="benefit-card">
+          <h4>☀️ Regulación Emocional</h4>
+          <p>El contacto al aire libre y la relación directa con el microbioma de la tierra ayudan a disminuir los niveles de cortisol (estrés), calmando el sistema nervioso de niños con hiperactividad o ansiedad.</p>
+        </div>
+      </div>
+      
+      <div class="page-footer">
+        <span>Guía de Cultivo Familiar</span>
+        <span>Página 1 de 3</span>
+      </div>
+    </div>
+    
+    <!-- PAGE 2: CALENDARIOS DE SIEMBRA -->
+    <div class="page">
+      <h2>Calendarios de Siembra por Estaciones</h2>
+      <p>Para cultivar con éxito junto a tus hijos, es fundamental seguir el ritmo de la naturaleza. A continuación, se detallan las especies recomendadas para sembrar en las dos estaciones de transición en Chile y el Cono Sur.</p>
+      
+      <!-- Winter Calendar -->
+      <div class="calendar-card winter">
+        <div class="calendar-header">
+          <span class="icon">❄️</span>
+          <h3>Calendario de Invierno (Junio - Agosto)</h3>
+        </div>
+        <p>El invierno es un tiempo de resguardo y descanso visible. Bajo la tierra fría, sin embargo, las raíces están creciendo con fuerza. Elegimos cultivos que resisten bien las bajas temperaturas.</p>
+        
+        <table class="calendar-table">
+          <thead>
+            <tr>
+              <th>Cultivo</th>
+              <th>Tipo de Siembra</th>
+              <th>Cuidado Clave</th>
+              <th>Actividad para Niños</th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr>
+              <td><strong>Habas</strong></td>
+              <td>Directa (2 cm prof.)</td>
+              <td>Resisten heladas suaves</td>
+              <td><strong>"Enterrar Tesoros":</strong> Su gran semilla es ideal para manos pequeñas.</td>
+            </tr>
+            <tr>
+              <td><strong>Arvejas</strong></td>
+              <td>Directa (junto a soporte)</td>
+              <td>Necesitan trepar</td>
+              <td><strong>"Tipis de Ramas":</strong> Ayudar a clavar palos de madera para el soporte.</td>
+            </tr>
+            <tr>
+              <td><strong>Espinacas</strong></td>
+              <td>Directa o Almacigo</td>
+              <td>Riego moderado</td>
+              <td><strong>"Manta Protectora":</strong> Recolectar hojas secas y tapar la tierra contra el frío.</td>
+            </tr>
+            <tr>
+              <td><strong>Ajo</strong></td>
+              <td>Directa (diente de ajo)</td>
+              <td>Brote hacia arriba</td>
+              <td><strong>"Buscando el cielo":</strong> Plantar dientes con el brote orientado arriba.</td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
+
+      <!-- Spring Calendar -->
+      <div class="calendar-card spring">
+        <div class="calendar-header">
+          <span class="icon">🌸</span>
+          <h3>Calendario de Primavera (Septiembre - Noviembre)</h3>
+        </div>
+        <p>La primavera nos invita a expandirnos. Con el calorcito del sol, el crecimiento es vertiginoso. Es la época idónea para observar flores y atraer pequeños polinizadores.</p>
+        
+        <table class="calendar-table">
+          <thead>
+            <tr>
+              <th>Cultivo</th>
+              <th>Tipo de Siembra</th>
+              <th>Cuidado Clave</th>
+              <th>Actividad para Niños</th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr>
+              <td><strong>Rabanitos</strong></td>
+              <td>Directa (muy superficial)</td>
+              <td>Humedad constante</td>
+              <td><strong>"El Velocista":</strong> Cosechar en solo 30 días. ¡Perfecto para impacientes!</td>
+            </tr>
+            <tr>
+              <td><strong>Tomate Cherry</strong></td>
+              <td>Almacigo y trasplante</td>
+              <td>Soporte y sol directo</td>
+              <td><strong>"Dulces del huerto":</strong> Cosechar y lavar tomates dulces directo del arbusto.</td>
+            </tr>
+            <tr>
+              <td><strong>Zanahoria</strong></td>
+              <td>Directa (tierra suelta)</td>
+              <td>No trasplantar</td>
+              <td><strong>"Lluvia de Arena":</strong> Mezclar la semilla pequeña con arena para sembrar.</td>
+            </tr>
+            <tr>
+              <td><strong>Caléndula</strong></td>
+              <td>Directa o Almacigo</td>
+              <td>Atrae polinizadores</td>
+              <td><strong>"Bombas de Semillas":</strong> Hacer bolitas con greda, tierra y semillas de flores.</td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
+      
+      <div class="page-footer">
+        <span>Guía de Cultivo Familiar</span>
+        <span>Página 2 de 3</span>
+      </div>
+    </div>
+    
+    <!-- PAGE 3: GUÍA PRÁCTICA Y BITÁCORA -->
+    <div class="page">
+      <h2>Pasos para Comenzar la Siembra</h2>
+      
+      <div class="step">
+        <h3>1. Preparar la Cama de Siembra</h3>
+        <p>Remueve suavemente la tierra y mézclala con compost maduro. A los niños les encanta excavar; esta labor estimula su motricidad gruesa y les enseña a preparar el "nido" de la semilla.</p>
+      </div>
+
+      <div class="step">
+        <h3>2. El Acto de Sembrar</h3>
+        <p>Establece la regla del tamaño de la semilla: debe enterrarse al doble de su altura. Realizar pequeños agujeros con el dedo índice y depositar suavemente la semilla fomenta la precisión física y la delicadeza.</p>
+      </div>
+
+      <div class="step">
+        <h3>3. El Ritmo del Agua</h3>
+        <p>Establece un momento fijo diario para el riego (idealmente temprano por la mañana o al atardecer). El cuidado diario de otro ser vivo crea un hábito que consolida el sentido de constancia y responsabilidad social en los niños.</p>
+      </div>
+
+      <h2>Bitácora del Pequeño Explorador</h2>
+      <p>Imprime esta sección para que los niños puedan registrar sus descubrimientos científicos, dibujar el crecimiento de su semilla y anotar observaciones.</p>
+      
+      <div class="journal-box">
+        <div class="journal-row">
+          <span>📅 Fecha de Siembra: ________________________</span>
+          <span>🌱 Planta sembrada: ________________________</span>
+        </div>
+        <div class="journal-row">
+          <span>☀️ ¿Tiene sol o sombra?: _____________________</span>
+          <span>💦 ¿Cada cuánto se riega?: _________________</span>
+        </div>
+        
+        <div class="journal-drawing">
+          <p>🎨 Dibuja el crecimiento de tu planta (desde semilla hasta que brote):</p>
+          <div class="drawing-area">
+            Dibuja aquí tu brote de la huerta
+          </div>
+        </div>
+
+        <div class="journal-notes">
+          <p>📝 Notas del Explorador (¿Qué aroma tiene?, ¿Quién visitó tu planta?, ¿Cómo se siente la tierra?):</p>
+          <p class="dotted-line"></p>
+          <p class="dotted-line"></p>
+        </div>
+      </div>
+      
+      <div class="page-footer">
+        <span>Guía de Cultivo Familiar</span>
+        <span>Página 3 de 3</span>
+      </div>
+    </div>
+
+  </div>
+</body>
+</html>

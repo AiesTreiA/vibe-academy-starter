@@ -1,0 +1,88 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8"><title>Guía Clase 7 - VibeCode Lab</title>
+  <style>
+    @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800;900&display=swap');
+    @page { size: A4 portrait; margin: 8mm 12mm 6mm 12mm; }
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    body { font-family: 'Inter', sans-serif; color: #1e293b; background: #fff; font-size: 8.5px; line-height: 1.32; }
+    .header-banner { background: #0b0f19; border-radius: 8px; padding: 8px 14px; display: flex; justify-content: space-between; align-items: center; margin-bottom: 8px; }
+    .logo-title { color: #fff; font-weight: 900; font-size: 13px; }
+    .logo-sub { color: #94a3b8; font-weight: 600; font-size: 7.5px; letter-spacing: 2px; display: block; }
+    .header-badge { background: #1e1b4b; border: 1px solid #4338ca; color: #c7d2fe; font-weight: 700; font-size: 8px; padding: 4px 10px; border-radius: 99px; text-transform: uppercase; }
+    .main-title { color: #0f172a; font-size: 15px; font-weight: 800; margin-bottom: 4px; }
+    .info-card { background: #f8fafc; border: 1px solid #e2e8f0; border-radius: 6px; padding: 6px 9px; margin-bottom: 6px; }
+    .grid-2 { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; margin-bottom: 6px; }
+    .box { border: 1px solid #cbd5e1; border-radius: 6px; padding: 6px 8px; }
+    .box h3 { font-size: 9.5px; color: #0369a1; margin-bottom: 3px; font-weight: 700; }
+    .box ul { padding-left: 14px; }
+    .box li { margin-bottom: 2px; }
+    table { width: 100%; border-collapse: collapse; margin-top: 4px; font-size: 8px; }
+    th, td { border: 1px solid #e2e8f0; padding: 4px 6px; text-align: left; }
+    th { background: #f1f5f9; color: #0f172a; font-weight: 700; }
+  </style>
+</head>
+<body>
+  <div class="header-banner">
+    <div><span class="logo-title">VIBECODE LAB</span><span class="logo-sub">CLASE 7 · FINAL</span></div>
+    <div class="header-badge">Despliegue, Power Pitch &amp; Demo Day</div>
+  </div>
+  <h1 class="main-title">Clase 7: Despliegue en Producción &amp; Power Pitch para Capital</h1>
+  <div class="info-card">
+    <p><strong>Objetivo de Graduación:</strong> Desplegar el SaaS en Vercel con dominio institucional y SSL, estructurar un pitch de 3 minutos bajo el <em>Power Pitch Method®</em> y defender la solución ante evaluadores CORFO, Ángeles e inversores en el Demo Day.</p>
+  </div>
+
+  <div class="grid-2">
+    <div class="box">
+      <h3>1. Despliegue en Producción (Vercel)</h3>
+      <ul>
+        <li><strong>Variables de Entorno:</strong> Mercado Pago 'live', Supabase pooler y Cloudflare R2 restringido.</li>
+        <li><strong>DNS:</strong> Registro A a <code>76.76.21.21</code> y CNAME a <code>cname.vercel-dns.com</code>.</li>
+        <li><strong>Plan B Anti-Caídas:</strong> Video de 45s pregrabado en local sin audio.</li>
+      </ul>
+    </div>
+    <div class="box">
+      <h3>2. Los 3 Pilares del Relato (Sepúlveda)</h3>
+      <ul>
+        <li><strong>Deseable:</strong> Demuestra un salto de valor urgente e irrenunciable.</li>
+        <li><strong>Irrefutable:</strong> Respaldado por métricas reales y validación en terreno.</li>
+        <li><strong>Replicable:</strong> Tan claro que el evaluador lo puede repetir en su comité.</li>
+      </ul>
+    </div>
+  </div>
+
+  <div class="box" style="margin-bottom:6px;">
+    <h3>3. Las 6 Escenas del Power Pitch (3 Minutos)</h3>
+    <table>
+      <thead><tr><th>Escena</th><th>Tiempo</th><th>Foco Dramatúrgico &amp; Contenido</th></tr></thead>
+      <tbody>
+        <tr><td><strong>1. El Dolor</strong></td><td>0:00 - 0:30</td><td>Problema crítico cuantificado en horas/dólares perdidos o riesgo operativo.</td></tr>
+        <tr><td><strong>2. El Analgésico</strong></td><td>0:30 - 0:55</td><td>Parches ineficientes del mercado (Excel, consultoría lenta, software legacy).</td></tr>
+        <tr><td><strong>3. La Solución</strong></td><td>0:55 - 1:35</td><td>Demostración en vivo en Vercel: Transformación radical (Antes vs Después).</td></tr>
+        <tr><td><strong>4. La Ambición</strong></td><td>1:35 - 2:05</td><td>Tamaño de mercado (TAM &gt; $1B), ventaja competitiva y visión regional.</td></tr>
+        <tr><td><strong>5. Tracción</strong></td><td>2:05 - 2:40</td><td>Métricas clave: MRR, usuarios activos, CAC, LTV/CAC &gt; 3x y MoM growth.</td></tr>
+        <tr><td><strong>6. Capital Ask &amp; Cierre</strong></td><td>2:40 - 3:00</td><td>Capital a levantar (The Ask), desglose de uso de fondos (GTM/Producto/Runway), hito a 9 meses y Doble Alternativa.</td></tr>
+      </tbody>
+    </table>
+  </div>
+
+  <div class="box">
+    <h3>4. Lo que Mueve la Aguja ante Inversionistas</h3>
+    <p><strong>CORFO:</strong> Novedad técnica respecto a Chile, impacto en productividad, factibilidad con IA.<br/>
+    <strong>Ángeles &amp; VCs:</strong> MRR recurrente, MoM growth &gt; 15%, LTV/CAC &gt; 3x, Payback &lt; 12 meses y retención neta.</p>
+  </div>
+
+  <div class="box" style="margin-top:4px;">
+    <h3>⚡ 5. Taller Relámpago de Creación (15 Minutos)</h3>
+    <p><strong>Opción Gamma.app:</strong> Pega el Prompt Maestro en <a href="https://gamma.app" target="_blank">gamma.app</a> para generar láminas visuales con IA en 60s.<br/>
+    <strong>Opción Antigravity IDE:</strong> Pide a la IA que cree un <code>pitch.html</code> con Tailwind en tu proyecto para presentar nativamente en el navegador.<br/>
+    <strong>Demo en Vercel:</strong> Ten abierta tu app en producción para mostrar la funcionalidad core en vivo en la Escena 3.</p>
+  </div>
+
+  <div class="box" style="margin-top:6px; background:#f8fafc; border: 1.5px solid #6366f1;">
+    <h3 style="color:#4338ca;">🎓 6. Entregable Mandatorio: Quiz Final de Cierre (javiermujica.com/quiz)</h3>
+    <p>Para concluir la cohorte y recibir tu <strong>Certificado Preliminar en PDF de forma automática e inmediata</strong>, cada estudiante debe completar el formulario en <code>https://www.javiermujica.com/quiz</code> registrando sus aprendizajes y URL de proyecto. La <strong>certificación oficial con código QR e ID único</strong> (que incluye tu página pública de confirmación con link directo a tu MVP en producción) se emitirá una vez que tu squad envíe su prototipo funcional y sea validado por Javier.</p>
+  </div>
+</body>
+</html>

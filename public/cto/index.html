@@ -1,0 +1,1550 @@
+<!DOCTYPE html>
+<html lang="es" class="dark">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>CTO Multi-Venture Meta Dashboard & Data Observability Hub</title>
+  <link rel="icon" type="image/png" href="/favicon-64.png">
+  <script src="https://cdn.tailwindcss.com"></script>
+  <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/d3@7/dist/d3.min.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/topojson-client@3/dist/topojson-client.min.js"></script>
+  <script>
+    tailwind.config = {
+      darkMode: 'class',
+      theme: {
+        extend: {
+          colors: {
+            brand: {
+              50: '#eff6ff',
+              500: '#3b82f6',
+              600: '#2563eb',
+              700: '#1d4ed8',
+              900: '#1e3a8a',
+            }
+          }
+        }
+      }
+    }
+  </script>
+  <style>
+    ::-webkit-scrollbar { width: 6px; height: 6px; }
+    ::-webkit-scrollbar-track { background: #070b14; }
+    ::-webkit-scrollbar-thumb { background: #1e293b; border-radius: 4px; }
+    ::-webkit-scrollbar-thumb:hover { background: #334155; }
+    .glass-card {
+      background: rgba(15, 23, 42, 0.78);
+      backdrop-filter: blur(14px);
+      border: 1px solid rgba(51, 65, 85, 0.6);
+    }
+    .cloud-pill {
+      display: inline-flex;
+      align-items: center;
+      gap: 0.25rem;
+      padding: 0.15rem 0.5rem;
+      font-size: 0.7rem;
+      font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
+      border-radius: 9999px;
+      background: rgba(30, 41, 59, 0.8);
+      border: 1px solid rgba(71, 85, 105, 0.5);
+      color: #93c5fd;
+    }
+    .badge-gcp { color: #60a5fa; border-color: rgba(96, 165, 250, 0.3); background: rgba(59, 130, 246, 0.1); }
+    .badge-aws { color: #f59e0b; border-color: rgba(245, 158, 11, 0.3); background: rgba(245, 158, 11, 0.1); }
+    .badge-azure { color: #38bdf8; border-color: rgba(56, 189, 248, 0.3); background: rgba(56, 189, 248, 0.1); }
+  </style>
+  <script>
+    // Security check: require authenticated admin session
+    (function() {
+      function checkAuth() {
+        const cookies = document.cookie.split(';').map(c => c.trim());
+        const hasSession = cookies.some(c => c === 'admin_session=authenticated');
+        const hasLocalKey = sessionStorage.getItem('cto_authorized') === 'true';
+        return hasSession || hasLocalKey;
+      }
+
+      window.addEventListener('DOMContentLoaded', () => {
+        const authOverlay = document.getElementById('auth-gatekeeper-overlay');
+        const mainContent = document.getElementById('cto-dashboard-content');
+        if (!checkAuth()) {
+          if (authOverlay) authOverlay.classList.remove('hidden');
+          if (mainContent) mainContent.classList.add('hidden');
+        } else {
+          if (authOverlay) authOverlay.classList.add('hidden');
+          if (mainContent) mainContent.classList.remove('hidden');
+        }
+      });
+    })();
+
+    async function handleGatekeeperLogin(e) {
+      e.preventDefault();
+      const email = document.getElementById('gate-email').value.trim();
+      const password = document.getElementById('gate-password').value;
+      const errorMsg = document.getElementById('gate-error');
+      const submitBtn = document.getElementById('gate-btn');
+
+      errorMsg.classList.add('hidden');
+      submitBtn.disabled = true;
+      submitBtn.innerText = 'Verificando...';
+
+      try {
+        const res = await fetch('/api/admin/submissions', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ action: 'login', email, password })
+        });
+        const data = await res.json();
+        if (data.success) {
+          sessionStorage.setItem('cto_authorized', 'true');
+          document.cookie = 'admin_session=authenticated; path=/; max-age=604800; SameSite=Lax';
+          document.getElementById('auth-gatekeeper-overlay').classList.add('hidden');
+          document.getElementById('cto-dashboard-content').classList.remove('hidden');
+        } else {
+          errorMsg.innerText = data.error || 'Credenciales administrativas incorrectas';
+          errorMsg.classList.remove('hidden');
+        }
+      } catch (err) {
+        errorMsg.innerText = 'Error de conexión con el servidor de autenticación';
+        errorMsg.classList.remove('hidden');
+      } finally {
+        submitBtn.disabled = false;
+        submitBtn.innerText = 'Acceder al Centro de Mando';
+      }
+    }
+
+    function logoutGatekeeper() {
+      document.cookie = 'admin_session=; path=/; max-age=0; SameSite=Lax';
+      sessionStorage.removeItem('cto_authorized');
+      window.location.reload();
+    }
+  </script>
+</head>
+<body class="bg-[#060911] text-slate-100 min-h-screen font-sans selection:bg-blue-500/30 selection:text-blue-200">
+
+  <!-- AUTH GATEKEEPER OVERLAY -->
+  <div id="auth-gatekeeper-overlay" class="fixed inset-0 z-50 flex items-center justify-center bg-[#060911]/95 backdrop-blur-xl px-4 hidden">
+    <div class="glass-card max-w-md w-full p-8 rounded-2xl border border-slate-700/80 shadow-2xl relative">
+      <div class="text-center space-y-3 mb-6">
+        <div class="inline-flex p-3 rounded-2xl bg-blue-500/10 border border-blue-500/20 text-blue-400">
+          <svg class="w-8 h-8" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z" />
+          </svg>
+        </div>
+        <h1 class="text-2xl font-bold tracking-tight text-white">CTO Meta Control Plane</h1>
+        <p class="text-xs text-slate-400">Acceso restringido de alta seguridad. Ingresa tus credenciales maestras de administrador.</p>
+      </div>
+
+      <form onsubmit="handleGatekeeperLogin(event)" class="space-y-4">
+        <div>
+          <label class="block text-xs font-semibold text-slate-300 mb-1.5">Usuario / Correo Maestro</label>
+          <input id="gate-email" type="email" required placeholder="hola@javiermujica.com" value="hola@javiermujica.com" class="w-full bg-slate-900/90 border border-slate-700 rounded-xl px-3.5 py-2.5 text-sm text-white placeholder-slate-500 focus:outline-none focus:border-blue-500 focus:ring-1 focus:ring-blue-500" />
+        </div>
+
+        <div>
+          <label class="block text-xs font-semibold text-slate-300 mb-1.5">Contraseña Maestra</label>
+          <input id="gate-password" type="password" required placeholder="••••••••" class="w-full bg-slate-900/90 border border-slate-700 rounded-xl px-3.5 py-2.5 text-sm text-white placeholder-slate-500 focus:outline-none focus:border-blue-500 focus:ring-1 focus:ring-blue-500" />
+        </div>
+
+        <div id="gate-error" class="hidden text-xs text-rose-400 bg-rose-500/10 border border-rose-500/20 px-3 py-2 rounded-lg text-center font-medium"></div>
+
+        <button id="gate-btn" type="submit" class="w-full bg-blue-600 hover:bg-blue-500 text-white font-semibold py-2.5 px-4 rounded-xl text-sm transition-colors shadow-lg shadow-blue-500/20">
+          Acceder al Centro de Mando
+        </button>
+      </form>
+
+      <div class="mt-6 text-center text-[11px] text-slate-500 flex items-center justify-center gap-1.5">
+        <svg class="w-3.5 h-3.5 text-emerald-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m5.618-4.016A11.955 11.955 0 0112 2.944a11.955 11.955 0 01-8.618 3.04A12.02 12.02 0 003 9c0 5.591 3.824 10.29 9 11.622 5.176-1.332 9-6.03 9-11.622 0-1.042-.133-2.052-.382-3.016z" />
+        </svg>
+        <span>Sesión criptográfica protegida de 7 días</span>
+      </div>
+    </div>
+  </div>
+
+  <!-- DASHBOARD CONTENT WRAPPER -->
+  <div id="cto-dashboard-content">
+
+  <!-- TOP ENTERPRISE STATUS BAR -->
+  <aside class="border-b border-slate-800/80 bg-slate-950/90 px-4 py-2.5 text-xs">
+    <div class="max-w-7xl mx-auto flex flex-wrap items-center justify-between gap-3">
+      <div class="flex items-center gap-2">
+        <span class="relative flex h-2 w-2">
+          <span class="animate-ping absolute inline-flex h-full w-full rounded-full bg-emerald-400 opacity-75"></span>
+          <span class="relative inline-flex rounded-full h-2 w-2 bg-emerald-500"></span>
+        </span>
+        <span class="font-bold text-white tracking-wide">CTO META CONTROL PLANE</span>
+        <span class="text-slate-600">|</span>
+        <span class="text-slate-400 hidden md:inline">4 Ventures Conectadas: sintergia · raapaz · verticapp · javiermujica + obs-pipelines</span>
+      </div>
+      <div class="flex items-center gap-4 text-slate-400">
+        <span class="cloud-pill badge-gcp hidden sm:inline-flex">GCP Cloud Composer & BigQuery Architecture Mapping</span>
+        <span id="live-clock" class="font-mono text-slate-300">2026-10-31 01:38 UTC</span>
+
+        <!-- TOGGLE DATA SOURCE: MOCK VS REAL -->
+        <div class="flex items-center gap-2 bg-slate-900/90 border border-slate-700/80 px-2.5 py-1 rounded-xl">
+          <span class="text-[11px] font-semibold text-slate-500" id="toggle-label-mock">Simulado</span>
+          <button id="data-mode-toggle" onclick="toggleDataMode()" class="relative inline-flex h-5 w-9 shrink-0 cursor-pointer rounded-full border-2 border-transparent bg-emerald-600 transition-colors duration-200 ease-in-out focus:outline-none" role="switch" aria-checked="true">
+            <span id="data-mode-thumb" aria-hidden="true" class="pointer-events-none inline-block h-4 w-4 transform rounded-full bg-white shadow ring-0 transition duration-200 ease-in-out translate-x-4"></span>
+          </button>
+          <span class="text-[11px] font-bold text-emerald-400 transition-colors flex items-center gap-1" id="toggle-label-real">
+            <span>Telemetría Real</span>
+            <span id="real-live-dot" class="w-1.5 h-1.5 rounded-full bg-emerald-400"></span>
+          </span>
+        </div>
+
+        <button onclick="refreshData()" class="hover:text-white transition-colors flex items-center gap-1.5 text-[11px] bg-slate-900 border border-slate-700/80 px-2.5 py-1 rounded-lg">
+          <svg class="w-3 h-3 text-blue-400 animate-spin" id="refresh-spinner" style="display:none" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
+          </svg>
+          <span id="refresh-text">Sync Live Telemetry</span>
+        </button>
+        <button onclick="logoutGatekeeper()" class="hover:text-rose-400 transition-colors flex items-center gap-1.5 text-[11px] bg-rose-950/40 border border-rose-800/60 px-2.5 py-1 rounded-lg text-rose-300">
+          <svg class="w-3 h-3" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 16l4-4m0 0l-4-4m4 4H7m6 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013-3h4a3 3 0 013 3v1" />
+          </svg>
+          <span>Cerrar Sesión</span>
+        </button>
+      </div>
+    </div>
+  </aside>
+
+  <!-- MAIN CONTAINER -->
+  <main class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-6 space-y-6">
+
+    <!-- HERO HEADER -->
+    <header class="glass-card rounded-2xl p-6 relative overflow-hidden">
+      <div class="absolute -right-20 -top-20 w-80 h-80 bg-blue-600/10 rounded-full blur-3xl pointer-events-none"></div>
+      <div class="absolute -left-20 -bottom-20 w-80 h-80 bg-emerald-600/10 rounded-full blur-3xl pointer-events-none"></div>
+
+      <div class="flex flex-col lg:flex-row lg:items-center justify-between gap-6 relative z-10">
+        <div class="space-y-2">
+          <div class="flex flex-wrap items-center gap-2">
+            <span class="px-2.5 py-0.5 rounded-full text-xs font-bold bg-blue-500/15 text-blue-400 border border-blue-500/30">
+              One-Person-Unicorn Stack
+            </span>
+            <span class="px-2.5 py-0.5 rounded-full text-xs font-semibold bg-emerald-500/15 text-emerald-400 border border-emerald-500/30">
+              obs-pipelines Connected
+            </span>
+            <span class="text-xs text-slate-400">Enterprise High-End Data & AI Architecture</span>
+          </div>
+          <h1 class="text-2xl sm:text-3xl font-extrabold tracking-tight text-white flex items-center gap-3">
+            <span>Multi-Venture CTO Meta Dashboard</span>
+            <span id="hero-mode-badge" class="text-xs px-2.5 py-0.5 rounded-full font-semibold border bg-emerald-500/10 text-emerald-400 border-emerald-500/30">
+              ● Telemetría Real en Vivo (Edge & Supabase)
+            </span>
+          </h1>
+          <p class="text-slate-300 text-sm max-w-3xl leading-relaxed">
+            Observabilidad unificada de datos, analítica de tráfico, pipelines idempotentes y gobernanza para 
+            <strong class="text-white">Síntergia Group</strong>, <strong class="text-white">Raapaz</strong>, <strong class="text-white">Verticapp</strong> y <strong class="text-white">Javier Mujica</strong>, orquestados bajo la lógica de ingeniería de datos corporativa.
+          </p>
+        </div>
+
+        <!-- QUICK ACTION BUTTONS -->
+        <div class="flex flex-wrap items-center gap-2.5">
+          <button onclick="exportInterviewCheatSheet()" class="px-3.5 py-2 text-xs font-semibold bg-slate-800 hover:bg-slate-700 text-slate-200 border border-slate-700 rounded-xl transition-all flex items-center gap-1.5">
+            <svg class="w-4 h-4 text-blue-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
+            </svg>
+            <span>Cheat Sheet Entrevista (GCP/AWS/Azure)</span>
+          </button>
+          <button onclick="exportMetricsJson()" class="px-3.5 py-2 text-xs font-semibold bg-blue-600 hover:bg-blue-500 text-white rounded-xl shadow-lg shadow-blue-500/25 transition-all flex items-center gap-1.5">
+            <svg class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4" />
+            </svg>
+            <span>Exportar Métricas (JSON)</span>
+          </button>
+        </div>
+      </div>
+
+      <!-- MAIN NAVIGATION TABS -->
+      <nav class="flex flex-wrap items-center gap-2 mt-6 pt-5 border-t border-slate-800 text-xs">
+        <button onclick="switchTab('ventures')" id="tab-ventures" class="px-3.5 py-2 rounded-xl font-bold bg-blue-600 text-white transition-all flex items-center gap-2">
+          <span>🌐 4 Ventures Multi-Dashboard</span>
+        </button>
+        <button onclick="switchTab('obs')" id="tab-obs" class="px-3.5 py-2 rounded-xl font-medium text-slate-400 hover:text-white hover:bg-slate-800/80 transition-all flex items-center gap-2">
+          <span>⚡ obs-pipelines: Idempotencia & Gobernanza</span>
+        </button>
+        <button onclick="switchTab('cloud')" id="tab-cloud" class="px-3.5 py-2 rounded-xl font-medium text-slate-400 hover:text-white hover:bg-slate-800/80 transition-all flex items-center gap-2">
+          <span>☁️ Equivalencias Cloud (GCP / AWS / Azure)</span>
+        </button>
+        <button onclick="switchTab('funnel')" id="tab-funnel" class="px-3.5 py-2 rounded-xl font-medium text-slate-400 hover:text-white hover:bg-slate-800/80 transition-all flex items-center gap-2">
+          <span>🎯 Embudo & Paid Media (Meta CAPI)</span>
+        </button>
+        <button onclick="switchTab('geo')" id="tab-geo" class="px-3.5 py-2 rounded-xl font-medium text-slate-400 hover:text-white hover:bg-slate-800/80 transition-all flex items-center gap-2">
+          <span>🗺️ Geo-Audiencia (Mapa & Decisiones)</span>
+        </button>
+      </nav>
+    </header>
+
+    <!-- TOP GLOBAL KPI CARDS -->
+    <section class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+      
+      <!-- KPI 1 -->
+      <div class="glass-card rounded-2xl p-5 space-y-3">
+        <div class="flex items-center justify-between text-slate-400">
+          <span class="text-xs font-bold uppercase tracking-wider">Tráfico Consolidado (4 Sitios)</span>
+          <span class="cloud-pill badge-gcp">GCP: Cloud Monitoring</span>
+        </div>
+        <div>
+          <div id="kpi-traffic-val" class="text-3xl font-extrabold text-white">1,842</div>
+          <div class="flex items-center gap-1.5 text-xs text-emerald-400 mt-1">
+            <span id="kpi-traffic-change">↑ +14.8% WoW (Tráfico Orgánico Activo)</span>
+            <span id="kpi-traffic-breakdown" class="text-slate-400">· javier (52%), sintergia (26%), raapaz (14%), verticapp (8%)</span>
+          </div>
+        </div>
+        <div class="w-full bg-slate-800 h-1.5 rounded-full overflow-hidden">
+          <div id="kpi-traffic-bar" class="bg-blue-500 h-1.5 rounded-full" style="width: 32%"></div>
+        </div>
+      </div>
+
+      <!-- KPI 2 -->
+      <div class="glass-card rounded-2xl p-5 space-y-3">
+        <div class="flex items-center justify-between text-slate-400">
+          <span class="text-xs font-bold uppercase tracking-wider">Tasa de Idempotencia</span>
+          <span class="cloud-pill badge-gcp">GCP: Dataflow Exactly-Once</span>
+        </div>
+        <div>
+          <div id="kpi-idempotency-val" class="text-3xl font-extrabold text-emerald-400">100.0%</div>
+          <div class="flex items-center gap-1.5 text-xs text-slate-300 mt-1">
+            <span id="kpi-idempotency-status" class="text-emerald-400 font-semibold">100% Determinístico</span>
+            <span class="text-slate-400">· Hashing determinístico & UPSERT</span>
+          </div>
+        </div>
+        <div class="w-full bg-slate-800 h-1.5 rounded-full overflow-hidden">
+          <div id="kpi-idempotency-bar" class="bg-emerald-500 h-1.5 rounded-full" style="width: 100%"></div>
+        </div>
+      </div>
+
+      <!-- KPI 3 -->
+      <div class="glass-card rounded-2xl p-5 space-y-3">
+        <div class="flex items-center justify-between text-slate-400">
+          <span class="text-xs font-bold uppercase tracking-wider">Data Quality Tests (obs)</span>
+          <span class="cloud-pill badge-gcp">GCP: Dataplex Quality</span>
+        </div>
+        <div>
+          <div id="kpi-dq-val" class="text-3xl font-extrabold text-white">18 / 18 <span class="text-emerald-400 text-lg">✓</span></div>
+          <div class="flex items-center gap-1.5 text-xs text-slate-300 mt-1">
+            <span id="kpi-dq-drift" class="text-purple-400 font-semibold">0 Schema Drift (En Producción)</span>
+            <span id="kpi-dq-sla" class="text-slate-400">· Freshness SLA &lt; 5m</span>
+          </div>
+        </div>
+        <div class="w-full bg-slate-800 h-1.5 rounded-full overflow-hidden">
+          <div id="kpi-dq-bar" class="bg-purple-500 h-1.5 rounded-full" style="width: 100%"></div>
+        </div>
+      </div>
+
+      <!-- KPI 4 -->
+      <div class="glass-card rounded-2xl p-5 space-y-3">
+        <div class="flex items-center justify-between text-slate-400">
+          <span class="text-xs font-bold uppercase tracking-wider">FinOps / Infra OpEx Total</span>
+          <span class="cloud-pill badge-gcp">GCP: Cloud Billing / FinOps</span>
+        </div>
+        <div>
+          <div id="kpi-finops-val" class="text-3xl font-extrabold text-white">$0.00 <span class="text-xs text-slate-400 font-normal">USD/mes</span></div>
+          <div class="flex items-center gap-1.5 text-xs text-emerald-400 mt-1">
+            <span id="kpi-finops-margin">Hobby / Free Tier 100%</span>
+            <span id="kpi-finops-desc" class="text-slate-400">0 USD facturados este ciclo</span>
+          </div>
+        </div>
+        <div class="w-full bg-slate-800 h-1.5 rounded-full overflow-hidden">
+          <div id="kpi-finops-bar" class="bg-cyan-500 h-1.5 rounded-full" style="width: 10%"></div>
+        </div>
+      </div>
+
+    </section>
+
+    <!-- ========================================== -->
+    <!-- TAB 1: 4 VENTURES MULTI-PROJECT MATRIX -->
+    <!-- ========================================== -->
+    <div id="content-ventures" class="space-y-6">
+      
+      <div class="glass-card rounded-2xl p-6 space-y-5">
+        <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+          <div>
+            <h3 class="font-bold text-lg text-white">Matriz Operativa de las 4 Ventures</h3>
+            <p class="text-xs text-slate-400">
+              Estado en tiempo real de tráfico, base de datos, motor de IA y conversión de cada plataforma
+            </p>
+          </div>
+          <span class="text-xs text-blue-400 font-mono bg-blue-500/10 border border-blue-500/20 px-3 py-1 rounded-xl">
+            Arquitectura Multi-Tenant Homogénea
+          </span>
+        </div>
+
+        <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
+          
+          <!-- Venture 1: Síntergia Group -->
+          <div class="p-5 rounded-xl bg-slate-900/90 border border-blue-500/30 space-y-3.5 relative overflow-hidden">
+            <div class="flex items-center justify-between">
+              <span class="text-xs font-bold text-blue-400 uppercase tracking-wider">sintergiagroup.com</span>
+              <span class="w-2 h-2 rounded-full bg-emerald-400"></span>
+            </div>
+            <div>
+              <h4 class="text-base font-bold text-white">Síntergia Group</h4>
+              <p class="text-xs text-slate-400">B2B Culture & Clima · Modelo Laloux</p>
+            </div>
+            <div class="space-y-1.5 text-xs border-t border-slate-800 pt-2.5">
+              <div class="flex justify-between"><span class="text-slate-400">Tráfico:</span><strong id="v-sintergia-traffic" class="text-white">480 / mes</strong></div>
+              <div class="flex justify-between"><span class="text-slate-400">Conversión Freemium:</span><strong id="v-sintergia-conv" class="text-emerald-400">5.2%</strong></div>
+              <div class="flex justify-between"><span class="text-slate-400">Pipeline B2B:</span><strong id="v-sintergia-pipeline" class="text-blue-300">Supabase DB Activa</strong></div>
+              <div class="flex justify-between"><span class="text-slate-400">DWH / DB:</span><span class="font-mono text-slate-300">Supabase Postgres</span></div>
+              <div class="flex justify-between"><span class="text-slate-400">LLM Motor:</span><span class="font-mono text-purple-300">Gemini 3.8 Flash</span></div>
+            </div>
+            <a href="/" target="_blank" class="block w-full py-1.5 text-center text-xs font-semibold rounded-lg bg-blue-600/20 hover:bg-blue-600/30 text-blue-300 border border-blue-500/30 transition-colors">
+              Abrir Plataforma ↗
+            </a>
+          </div>
+
+          <!-- Venture 2: Raapaz -->
+          <div class="p-5 rounded-xl bg-slate-900/90 border border-purple-500/30 space-y-3.5 relative overflow-hidden">
+            <div class="flex items-center justify-between">
+              <span class="text-xs font-bold text-purple-400 uppercase tracking-wider">raapaz.com</span>
+              <span class="w-2 h-2 rounded-full bg-emerald-400"></span>
+            </div>
+            <div>
+              <h4 class="text-base font-bold text-white">Raapaz Media & Studio</h4>
+              <p class="text-xs text-slate-400">Producción Audiovisual & Content IA</p>
+            </div>
+            <div class="space-y-1.5 text-xs border-t border-slate-800 pt-2.5">
+              <div class="flex justify-between"><span class="text-slate-400">Tráfico:</span><strong id="v-raapaz-traffic" class="text-white">260 / mes</strong></div>
+              <div class="flex justify-between"><span class="text-slate-400">Media Pipeline:</span><strong id="v-raapaz-status" class="text-emerald-400">MercadoPago + Supabase</strong></div>
+              <div class="flex justify-between"><span class="text-slate-400">Storage / Raw:</span><span class="font-mono text-slate-300">S3 / MinIO (GCS)</span></div>
+              <div class="flex justify-between"><span class="text-slate-400">Ingesta Audio/Video:</span><span class="font-mono text-slate-300">FFmpeg + Whisper</span></div>
+              <div class="flex justify-between"><span class="text-slate-400">Automatización:</span><span class="font-mono text-purple-300">OpenClaw Gateway</span></div>
+            </div>
+            <a href="https://raapaz.com" target="_blank" class="block w-full py-1.5 text-center text-xs font-semibold rounded-lg bg-purple-600/20 hover:bg-purple-600/30 text-purple-300 border border-purple-500/30 transition-colors">
+              Visitar raapaz.com ↗
+            </a>
+          </div>
+
+          <!-- Venture 3: Verticapp -->
+          <div class="p-5 rounded-xl bg-slate-900/90 border border-emerald-500/30 space-y-3.5 relative overflow-hidden">
+            <div class="flex items-center justify-between">
+              <span class="text-xs font-bold text-emerald-400 uppercase tracking-wider">verticapp.pro</span>
+              <span class="w-2 h-2 rounded-full bg-emerald-400"></span>
+            </div>
+            <div>
+              <h4 class="text-base font-bold text-white">Verticapp</h4>
+              <p class="text-xs text-slate-400">Vertical SaaS & Soluciones B2B</p>
+            </div>
+            <div class="space-y-1.5 text-xs border-t border-slate-800 pt-2.5">
+              <div class="flex justify-between"><span class="text-slate-400">Tráfico:</span><strong id="v-verticapp-traffic" class="text-white">142 / mes</strong></div>
+              <div class="flex justify-between"><span class="text-slate-400">Trial to Paid:</span><strong id="v-verticapp-conv" class="text-emerald-400">8.0%</strong></div>
+              <div class="flex justify-between"><span class="text-slate-400">Multi-tenant:</span><strong class="text-emerald-300">RLS Isolations</strong></div>
+              <div class="flex justify-between"><span class="text-slate-400">DWH / DB:</span><span class="font-mono text-slate-300">Supabase Auth + PG</span></div>
+              <div class="flex justify-between"><span class="text-slate-400">Pagos:</span><span class="font-mono text-slate-300">Mercado Pago / Stripe</span></div>
+            </div>
+            <a href="https://verticapp.pro" target="_blank" class="block w-full py-1.5 text-center text-xs font-semibold rounded-lg bg-emerald-600/20 hover:bg-emerald-600/30 text-emerald-300 border border-emerald-500/30 transition-colors">
+              Visitar verticapp.pro ↗
+            </a>
+          </div>
+
+          <!-- Venture 4: Javier Mujica -->
+          <div class="p-5 rounded-xl bg-slate-900/90 border border-amber-500/30 space-y-3.5 relative overflow-hidden">
+            <div class="flex items-center justify-between">
+              <span class="text-xs font-bold text-amber-400 uppercase tracking-wider">javiermujica.com</span>
+              <span class="w-2 h-2 rounded-full bg-emerald-400"></span>
+            </div>
+            <div>
+              <h4 class="text-base font-bold text-white">Javier Mujica</h4>
+              <p class="text-xs text-slate-400">Founder & Fractional CTO / AI Lead</p>
+            </div>
+            <div class="space-y-1.5 text-xs border-t border-slate-800 pt-2.5">
+              <div class="flex justify-between"><span class="text-slate-400">Tráfico:</span><strong id="v-javier-traffic" class="text-white">960 / mes</strong></div>
+              <div class="flex justify-between"><span class="text-slate-400">Inbound Consultas:</span><strong id="v-javier-conv" class="text-emerald-400">6 Consultas / mes</strong></div>
+              <div class="flex justify-between"><span class="text-slate-400">Authority Score:</span><strong id="v-javier-auth" class="text-amber-300">Fractional CTO</strong></div>
+              <div class="flex justify-between"><span class="text-slate-400">Stack:</span><span class="font-mono text-slate-300">Next/Vite + Edge CDN</span></div>
+              <div class="flex justify-between"><span class="text-slate-400">Booking:</span><span class="font-mono text-slate-300">Calendly + OpenClaw</span></div>
+            </div>
+            <a href="https://javiermujica.com" target="_blank" class="block w-full py-1.5 text-center text-xs font-semibold rounded-lg bg-amber-600/20 hover:bg-amber-600/30 text-amber-300 border border-amber-500/30 transition-colors">
+              Visitar javiermujica.com ↗
+            </a>
+          </div>
+
+        </div>
+      </div>
+
+      <!-- TRAFFIC BREAKDOWN CHARTS ROW -->
+      <div class="grid grid-cols-1 lg:grid-cols-3 gap-6">
+        <div class="glass-card rounded-2xl p-6 lg:col-span-2 space-y-4">
+          <div class="flex items-center justify-between">
+            <h3 class="font-bold text-base text-white">Comparativa de Tráfico Multi-Venture (Últimos 30 días)</h3>
+            <span class="cloud-pill badge-gcp">GCP: BigQuery Timeseries</span>
+          </div>
+          <div class="h-64 sm:h-72">
+            <canvas id="multiVenturesTrafficChart"></canvas>
+          </div>
+        </div>
+
+        <div class="glass-card rounded-2xl p-6 space-y-4">
+          <div class="flex items-center justify-between">
+            <h3 class="font-bold text-base text-white">Distribución de Audiencia</h3>
+            <span class="text-xs text-slate-400">Consolidado</span>
+          </div>
+          <div class="h-56 relative flex items-center justify-center">
+            <canvas id="venturesShareChart"></canvas>
+          </div>
+          <div class="text-xs text-slate-400 text-center">
+            Auditoría continua de eventos procesados por <code class="text-blue-300">obs-pipelines</code>
+          </div>
+        </div>
+      </div>
+
+    </div>
+
+    <!-- ============================================================ -->
+    <!-- TAB 2: OBS-PIPELINES, IDEMPOTENCIA & GOBERNANZA DE DATOS -->
+    <!-- ============================================================ -->
+    <div id="content-obs" class="space-y-6 hidden">
+      
+      <!-- CORE CONCEPT 1: IDEMPOTENCY -->
+      <div class="glass-card rounded-2xl p-6 space-y-4 border-l-4 border-l-emerald-500">
+        <div class="flex flex-col md:flex-row md:items-center justify-between gap-3">
+          <div>
+            <div class="flex items-center gap-2">
+              <span class="px-2.5 py-0.5 rounded-full text-xs font-bold bg-emerald-500/10 text-emerald-400 border border-emerald-500/20">
+                Pilar Clave para Entrevistas de Datos
+              </span>
+              <span class="cloud-pill badge-gcp">GCP: Dataflow Exactly-Once / Pub/Sub Deduplication</span>
+            </div>
+            <h3 class="font-extrabold text-xl text-white mt-1">1. Principio de Idempotencia en ETL / ELT</h3>
+            <p class="text-xs text-slate-400 mt-0.5">
+              $f(f(x)) = f(x)$: Ejecutar el pipeline 1 vez o 100 veces produce exactamente el mismo estado en la base de datos sin duplicaciones.
+            </p>
+          </div>
+          <div class="text-right">
+            <span class="text-xs text-slate-400">Deduplication Key:</span>
+            <div class="font-mono text-xs text-emerald-400 font-bold">SHA256(source + entity_id + event_date)</div>
+          </div>
+        </div>
+
+        <div class="grid grid-cols-1 md:grid-cols-3 gap-4 pt-2 text-xs">
+          <div class="p-4 rounded-xl bg-slate-900 border border-slate-800 space-y-1.5">
+            <div class="font-bold text-white flex items-center gap-1.5">
+              <span class="text-emerald-400">A.</span> Clave de Idempotencia (Deduplication Hash)
+            </div>
+            <p class="text-slate-400 leading-relaxed">
+              Cada evento entrante de encuestas, leads o visitas genera un hash único. Si la red reintenta el webhook, el registro es ignorado por unicidad.
+            </p>
+            <div class="text-[11px] font-mono text-slate-500">En GCP: <code>message_id</code> en Pub/Sub o InsertId en BigQuery.</div>
+          </div>
+
+          <div class="p-4 rounded-xl bg-slate-900 border border-slate-800 space-y-1.5">
+            <div class="font-bold text-white flex items-center gap-1.5">
+              <span class="text-emerald-400">B.</span> Estrategia UPSERT (Merge)
+            </div>
+            <p class="text-slate-400 leading-relaxed">
+              En lugar de `INSERT`, se aplica `ON CONFLICT (idempotency_key) DO UPDATE SET...`. Las re-ejecuciones son deterministas y seguras.
+            </p>
+            <div class="text-[11px] font-mono text-slate-500">En GCP: <code>MERGE INTO target USING source ON...</code> en BigQuery.</div>
+          </div>
+
+          <div class="p-4 rounded-xl bg-slate-900 border border-slate-800 space-y-1.5">
+            <div class="font-bold text-white flex items-center gap-1.5">
+              <span class="text-emerald-400">C.</span> Replayability & Backfilling
+            </div>
+            <p class="text-slate-400 leading-relaxed">
+              Si se corrige la lógica de transformación de Laloux o cálculos de churn, podemos reprocesar 90 días históricos sin romper datos limpios.
+            </p>
+            <div class="text-[11px] font-mono text-slate-500">En GCP: Airflow DAG backfill en Cloud Composer.</div>
+          </div>
+        </div>
+      </div>
+
+      <!-- CORE CONCEPT 2: DATA GOVERNANCE & LINEAGE -->
+      <div class="glass-card rounded-2xl p-6 space-y-4 border-l-4 border-l-blue-500">
+        <div class="flex items-center justify-between">
+          <div>
+            <div class="flex items-center gap-2">
+              <span class="px-2.5 py-0.5 rounded-full text-xs font-bold bg-blue-500/10 text-blue-400 border border-blue-500/20">
+                Data Governance & Linaje
+              </span>
+              <span class="cloud-pill badge-gcp">GCP: Dataplex / Data Catalog / Cloud DLP</span>
+            </div>
+            <h3 class="font-extrabold text-xl text-white mt-1">2. Linaje de Datos Medallion (Bronze ➔ Silver ➔ Gold)</h3>
+          </div>
+          <span class="text-xs text-blue-400 font-mono">Zero Trust Data Policy</span>
+        </div>
+
+        <!-- Pipeline Lineage Diagram -->
+        <div class="grid grid-cols-1 md:grid-cols-4 gap-3 pt-2 text-xs">
+          
+          <div class="p-4 rounded-xl bg-slate-900/90 border border-amber-500/30 space-y-2">
+            <div class="flex items-center justify-between text-amber-400 font-bold">
+              <span>BRONZE (Raw Landing)</span>
+              <span>🥉</span>
+            </div>
+            <p class="text-slate-300">Datos crudos tal como llegan de webhooks, encuestas de clima y logs de navegación.</p>
+            <div class="text-[11px] text-slate-500 font-mono">
+              • Inmutable & append-only<br>
+              • (GCP: Cloud Storage / BigQuery Raw)
+            </div>
+          </div>
+
+          <div class="p-4 rounded-xl bg-slate-900/90 border border-slate-400/30 space-y-2">
+            <div class="flex items-center justify-between text-slate-300 font-bold">
+              <span>SILVER (Cleansed & PII Mask)</span>
+              <span>🥈</span>
+            </div>
+            <p class="text-slate-300">Normalización, deduplicación, validación de tipos y anonimización de correos de colaboradores.</p>
+            <div class="text-[11px] text-slate-500 font-mono">
+              • PII Masking: SHA-256 tokens<br>
+              • (GCP: Cloud DLP / Dataflow)
+            </div>
+          </div>
+
+          <div class="p-4 rounded-xl bg-slate-900/90 border border-amber-400/40 space-y-2">
+            <div class="flex items-center justify-between text-amber-300 font-bold">
+              <span>GOLD (Business Marts)</span>
+              <span>🥇</span>
+            </div>
+            <p class="text-slate-300">Tablas agregadas listas para KPIs ejecutivos, estadios Laloux, benchmarks de 10 pilotos y churn.</p>
+            <div class="text-[11px] text-slate-500 font-mono">
+              • dbt Models / Star Schema<br>
+              • (GCP: BigQuery Data Marts / Looker)
+            </div>
+          </div>
+
+          <div class="p-4 rounded-xl bg-purple-950/20 border border-purple-500/30 space-y-2">
+            <div class="flex items-center justify-between text-purple-300 font-bold">
+              <span>AI AGENT (ROI Prioritizer)</span>
+              <span>🤖</span>
+            </div>
+            <p class="text-slate-300">El agente evalúa fallos y prioriza qué reparar primero en base al impacto financiero en el negocio.</p>
+            <div class="text-[11px] text-slate-500 font-mono">
+              • obs-pipelines reports/daily.md<br>
+              • (GCP: Vertex AI Agent Builder)
+            </div>
+          </div>
+
+        </div>
+      </div>
+
+      <!-- CORE CONCEPT 3: OBSERVABILITY & ALERTS MATRIX -->
+      <div class="glass-card rounded-2xl p-6 space-y-4 border-l-4 border-l-purple-500">
+        <div class="flex items-center justify-between">
+          <div>
+            <div class="flex items-center gap-2">
+              <span class="px-2.5 py-0.5 rounded-full text-xs font-bold bg-purple-500/10 text-purple-400 border border-purple-500/20">
+                Observabilidad de Datos & SLIs
+              </span>
+              <span class="cloud-pill badge-gcp">GCP: Cloud Monitoring / Datadog / Monte Carlo</span>
+            </div>
+            <h3 class="font-extrabold text-xl text-white mt-1">3. Los 4 Pilares de Observabilidad de Datos</h3>
+          </div>
+        </div>
+
+        <div class="grid grid-cols-1 md:grid-cols-4 gap-4 pt-2 text-xs">
+          
+          <div class="p-4 rounded-xl bg-slate-900 border border-slate-800 space-y-2">
+            <div class="font-bold text-white flex items-center justify-between">
+              <span>1. Freshness (Frescura)</span>
+              <span class="text-emerald-400">SLA: &lt; 15m</span>
+            </div>
+            <p class="text-slate-400">Verifica que los datos no se queden estancados. Si pasan &gt; 30 min sin nuevos eventos en hora laboral, emite alerta.</p>
+          </div>
+
+          <div class="p-4 rounded-xl bg-slate-900 border border-slate-800 space-y-2">
+            <div class="font-bold text-white flex items-center justify-between">
+              <span>2. Volume (Volumen)</span>
+              <span class="text-emerald-400">Normal (±15%)</span>
+            </div>
+            <p class="text-slate-400">Detecta caídas abruptas a 0 o picos de tráfico sospechosos (posible bot o ataque DDoS) mediante z-scores estadísticos.</p>
+          </div>
+
+          <div class="p-4 rounded-xl bg-slate-900 border border-slate-800 space-y-2">
+            <div class="font-bold text-white flex items-center justify-between">
+              <span>3. Schema Drift</span>
+              <span class="text-emerald-400">0 Brechas</span>
+            </div>
+            <p class="text-slate-400">Monitorea cambios inesperados en columnas (eliminaciones o mutaciones de tipos en JSON de encuestas) antes de cargar al DWH.</p>
+          </div>
+
+          <div class="p-4 rounded-xl bg-slate-900 border border-slate-800 space-y-2">
+            <div class="font-bold text-white flex items-center justify-between">
+              <span>4. Dead Letter Queue</span>
+              <span class="text-emerald-400">0 Mensajes</span>
+            </div>
+            <p class="text-slate-400">Los payloads malformados se aíslan en la DLQ para inspección sin frenar el flujo principal del pipeline.</p>
+          </div>
+
+        </div>
+      </div>
+
+    </div>
+
+    <!-- ============================================================ -->
+    <!-- TAB 3: CLOUD EQUIVALENTS TABLE (GCP vs AWS vs AZURE) -->
+    <!-- ============================================================ -->
+    <div id="content-cloud" class="space-y-6 hidden">
+      <div class="glass-card rounded-2xl p-6 space-y-5">
+        <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+          <div>
+            <h3 class="font-extrabold text-xl text-white">
+              Tabla Maestra de Equivalencias Cloud para Entrevistas
+            </h3>
+            <p class="text-xs text-slate-400 mt-1">
+              Cómo se traduce tu stack <em>One-Person-Unicorn</em> a la arquitectura corporativa de grandes bancos y unicornios
+            </p>
+          </div>
+          <span class="text-xs bg-indigo-500/10 text-indigo-300 border border-indigo-500/30 px-3 py-1 rounded-xl">
+            Preparación Senior Data / AI Engineer
+          </span>
+        </div>
+
+        <div class="overflow-x-auto">
+          <table class="w-full text-left text-xs border-collapse">
+            <thead>
+              <tr class="border-b border-slate-800 text-slate-400 bg-slate-900/50">
+                <th class="py-3 px-4 font-semibold uppercase">Capa del Pipeline</th>
+                <th class="py-3 px-4 font-semibold uppercase text-emerald-400">Tu Stack Unicornio</th>
+                <th class="py-3 px-4 font-semibold uppercase text-blue-400">Google Cloud (GCP)</th>
+                <th class="py-3 px-4 font-semibold uppercase text-amber-400">Amazon Web Services (AWS)</th>
+                <th class="py-3 px-4 font-semibold uppercase text-cyan-400">Microsoft Azure</th>
+              </tr>
+            </thead>
+            <tbody class="divide-y divide-slate-800/60 text-slate-300">
+              <tr class="hover:bg-slate-900/40 transition-colors">
+                <td class="py-3 px-4 font-bold text-white">1. Ingesta de Eventos / Streaming</td>
+                <td class="py-3 px-4 font-mono text-emerald-300">Webhooks + OpenClaw Gateway</td>
+                <td class="py-3 px-4 font-mono text-blue-300">Google Cloud Pub/Sub</td>
+                <td class="py-3 px-4 font-mono text-amber-300">Amazon Kinesis / EventBridge</td>
+                <td class="py-3 px-4 font-mono text-cyan-300">Azure Event Hubs</td>
+              </tr>
+              <tr class="hover:bg-slate-900/40 transition-colors">
+                <td class="py-3 px-4 font-bold text-white">2. Serverless Compute / Worker</td>
+                <td class="py-3 px-4 font-mono text-emerald-300">Supabase Edge (Deno 1.73)</td>
+                <td class="py-3 px-4 font-mono text-blue-300">Cloud Run / Cloud Functions</td>
+                <td class="py-3 px-4 font-mono text-amber-300">AWS Lambda / ECS Fargate</td>
+                <td class="py-3 px-4 font-mono text-cyan-300">Azure Functions / Container Apps</td>
+              </tr>
+              <tr class="hover:bg-slate-900/40 transition-colors">
+                <td class="py-3 px-4 font-bold text-white">3. Data Warehouse / Lakehouse</td>
+                <td class="py-3 px-4 font-mono text-emerald-300">PostgreSQL 15 + DuckDB</td>
+                <td class="py-3 px-4 font-mono text-blue-300 font-bold">Google BigQuery</td>
+                <td class="py-3 px-4 font-mono text-amber-300 font-bold">Amazon Redshift / Athena</td>
+                <td class="py-3 px-4 font-mono text-cyan-300 font-bold">Azure Synapse / Fabric</td>
+              </tr>
+              <tr class="hover:bg-slate-900/40 transition-colors">
+                <td class="py-3 px-4 font-bold text-white">4. Orquestación & DAGs</td>
+                <td class="py-3 px-4 font-mono text-emerald-300">Python Scheduler + OpenClaw Cron</td>
+                <td class="py-3 px-4 font-mono text-blue-300 font-bold">Cloud Composer (Apache Airflow)</td>
+                <td class="py-3 px-4 font-mono text-amber-300 font-bold">Amazon MWAA / Step Functions</td>
+                <td class="py-3 px-4 font-mono text-cyan-300 font-bold">Azure Data Factory</td>
+              </tr>
+              <tr class="hover:bg-slate-900/40 transition-colors">
+                <td class="py-3 px-4 font-bold text-white">5. Calidad & Observabilidad</td>
+                <td class="py-3 px-4 font-mono text-emerald-300">obs-pipelines (Great Exp. Logic)</td>
+                <td class="py-3 px-4 font-mono text-blue-300">Dataplex Data Quality / Monte Carlo</td>
+                <td class="py-3 px-4 font-mono text-amber-300">AWS Glue Data Quality</td>
+                <td class="py-3 px-4 font-mono text-cyan-300">Microsoft Purview Data Quality</td>
+              </tr>
+              <tr class="hover:bg-slate-900/40 transition-colors">
+                <td class="py-3 px-4 font-bold text-white">6. Vector Database / RAG</td>
+                <td class="py-3 px-4 font-mono text-emerald-300">Supabase pgvector</td>
+                <td class="py-3 px-4 font-mono text-blue-300">Vertex AI Vector Search / AlloyDB</td>
+                <td class="py-3 px-4 font-mono text-amber-300">OpenSearch / Bedrock Knowledge Bases</td>
+                <td class="py-3 px-4 font-mono text-cyan-300">Azure AI Search</td>
+              </tr>
+              <tr class="hover:bg-slate-900/40 transition-colors">
+                <td class="py-3 px-4 font-bold text-white">7. Modelos Fundacionales IA</td>
+                <td class="py-3 px-4 font-mono text-emerald-300">Gemini 3.8 Flash + DeepSeek</td>
+                <td class="py-3 px-4 font-mono text-blue-300">Vertex AI Model Garden (Gemini)</td>
+                <td class="py-3 px-4 font-mono text-amber-300">Amazon Bedrock (Claude / Llama)</td>
+                <td class="py-3 px-4 font-mono text-cyan-300">Azure OpenAI Service</td>
+              </tr>
+              <tr class="hover:bg-slate-900/40 transition-colors">
+                <td class="py-3 px-4 font-bold text-white">8. Raw Object Storage</td>
+                <td class="py-3 px-4 font-mono text-emerald-300">Supabase Storage / MinIO S3</td>
+                <td class="py-3 px-4 font-mono text-blue-300">Google Cloud Storage (GCS)</td>
+                <td class="py-3 px-4 font-mono text-amber-300">Amazon S3</td>
+                <td class="py-3 px-4 font-mono text-cyan-300">Azure Blob Storage</td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+
+        <div class="p-4 rounded-xl bg-slate-900 border border-slate-800 text-xs text-slate-300 space-y-2">
+          <strong class="text-blue-400">💡 Pitch de Entrevista Recomendado:</strong>
+          <p class="leading-relaxed">
+            <em>"En mis propios proyectos implemento la misma arquitectura de datos que utilizan las plataformas cloud de escala empresarial: orquestación idempotente con claves de deduplicación, separación Medallion Bronze/Silver/Gold y observabilidad con alertas de drift. Opero esto en una arquitectura lean y local-first con obs-pipelines, que mapea 1:1 a servicios gestionados como Google Cloud Composer, BigQuery y Dataplex para entornos corporativos."</em>
+          </p>
+        </div>
+      </div>
+    </div>
+
+    <!-- ============================================================ -->
+    <!-- TAB 4: FULL FUNNEL & PAID MEDIA (META PIXEL / CAPI) -->
+    <!-- ============================================================ -->
+    <div id="content-funnel" class="space-y-6 hidden">
+      
+      <!-- Full Funnel Visualizer -->
+      <div class="glass-card rounded-2xl p-6 space-y-5">
+        <div class="flex items-center justify-between">
+          <div>
+            <h3 class="font-bold text-lg text-white">Full-Funnel Cross-Venture (De Visita a Conversión Final)</h3>
+            <p class="text-xs text-slate-400">Consolidado ponderado de las 4 plataformas</p>
+          </div>
+          <span id="funnel-conv-rate" class="text-xs text-emerald-400 font-bold bg-emerald-500/10 border border-emerald-500/20 px-3 py-1 rounded-xl">
+            Tasa Conversión Promedio: 9.8%
+          </span>
+        </div>
+
+        <div class="grid grid-cols-1 md:grid-cols-5 gap-3 pt-2 text-xs">
+          <div class="p-4 rounded-xl bg-slate-900 border border-slate-800 text-center space-y-1.5">
+            <div class="font-semibold text-slate-400">1. Top of Funnel (TOFU)</div>
+            <div id="funnel-tofu" class="text-2xl font-bold text-white">1,842</div>
+            <div class="text-slate-500">Impresiones / Visitas Web</div>
+          </div>
+          <div class="p-4 rounded-xl bg-slate-900 border border-slate-800 text-center space-y-1.5">
+            <div class="font-semibold text-blue-400">2. Interacción Activa</div>
+            <div id="funnel-clicks" class="text-2xl font-bold text-blue-300">294</div>
+            <div id="funnel-clicks-rate" class="text-emerald-400 font-medium">16.0% tasa de click</div>
+          </div>
+          <div class="p-4 rounded-xl bg-slate-900 border border-slate-800 text-center space-y-1.5">
+            <div class="font-semibold text-indigo-400">3. Inicia Freemium / Demo</div>
+            <div id="funnel-demos" class="text-2xl font-bold text-indigo-300">112</div>
+            <div id="funnel-demos-rate" class="text-emerald-400 font-medium">38.1% avance</div>
+          </div>
+          <div class="p-4 rounded-xl bg-slate-900 border border-slate-800 text-center space-y-1.5">
+            <div class="font-semibold text-purple-400">4. Leads Cualificados</div>
+            <div id="funnel-leads" class="text-2xl font-bold text-purple-300">18</div>
+            <div id="funnel-leads-rate" class="text-emerald-400 font-medium">16.1% conversión lead</div>
+          </div>
+          <div class="p-4 rounded-xl bg-emerald-950/20 border border-emerald-500/30 text-center space-y-1.5">
+            <div class="font-semibold text-emerald-400">5. Contratos / Pilotos</div>
+            <div id="funnel-deals" class="text-2xl font-bold text-emerald-300">4</div>
+            <div id="funnel-deals-rate" class="text-emerald-400 font-bold">22.2% cierre B2B</div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Meta Tracking & CAPI Readiness -->
+      <div class="glass-card rounded-2xl p-6 space-y-5">
+        <div>
+          <h3 class="font-bold text-lg text-white">Módulo de Conexión Meta (Pixel & Conversions API - CAPI)</h3>
+          <p class="text-xs text-slate-400">Preparación para atribución precisa de tráfico pagado en Facebook & Instagram Ads</p>
+        </div>
+
+        <div class="grid grid-cols-1 md:grid-cols-3 gap-4 text-xs">
+          <div class="p-4 rounded-xl bg-slate-900 border border-slate-800 space-y-2">
+            <div class="text-blue-400 font-bold">1. Client-Side Meta Pixel</div>
+            <p class="text-slate-400">Configurado para disparar eventos <code>PageView</code>, <code>ViewContent</code> y <code>Lead</code> en el frontend de las 4 páginas.</p>
+          </div>
+          <div class="p-4 rounded-xl bg-slate-900 border border-slate-800 space-y-2">
+            <div class="text-emerald-400 font-bold">2. Server-Side CAPI (Supabase Edge)</div>
+            <p class="text-slate-400">Envío paralelo de eventos desde la Edge Function para eludir bloqueadores de anuncios y cookies de terceros (iOS/Safari).</p>
+          </div>
+          <div class="p-4 rounded-xl bg-slate-900 border border-slate-800 space-y-2">
+            <div class="text-purple-400 font-bold">3. Atribución Multi-Touch en DWH</div>
+            <p class="text-slate-400">Almacenamiento de <code>fbc</code> y <code>fbp</code> en las tablas de Postgres para calcular el ROAS y LTV exacto de cada piloto.</p>
+          </div>
+        </div>
+      </div>
+
+    </div>
+
+    <!-- ============================================================ -->
+    <!-- TAB 5: GEO-AUDIENCIA (MAPA + DECISIONES ESTRATÉGICAS)        -->
+    <!-- ============================================================ -->
+    <div id="content-geo" class="space-y-6 hidden">
+
+      <!-- Toolbar -->
+      <div class="glass-card rounded-2xl p-4 flex flex-wrap items-center justify-between gap-3">
+        <div>
+          <h3 class="font-bold text-lg text-white">Geo-Audiencia: ¿desde dónde nos ven y qué hago con eso?</h3>
+          <p class="text-xs text-slate-400">Visitas reales por país/ciudad, tendencia vs. período anterior y decisiones sugeridas.</p>
+        </div>
+        <div class="flex flex-wrap items-center gap-2 text-xs">
+          <select id="geo-days" onchange="loadGeo()" class="bg-slate-900 border border-slate-700 rounded-lg px-2.5 py-1.5 text-slate-200">
+            <option value="7">Últimos 7 días</option>
+            <option value="30" selected>Últimos 30 días</option>
+            <option value="90">Últimos 90 días</option>
+          </select>
+          <select id="geo-site" onchange="loadGeo()" class="bg-slate-900 border border-slate-700 rounded-lg px-2.5 py-1.5 text-slate-200">
+            <option value="all">Todos los sitios</option>
+            <option value="javiermujica.com">javiermujica.com</option>
+            <option value="sintergiagroup.com">sintergiagroup.com</option>
+            <option value="raapaz.com">raapaz.com</option>
+            <option value="verticapp.pro">verticapp.pro</option>
+          </select>
+          <span id="geo-source-badge" class="px-2.5 py-1 rounded-full font-semibold border bg-slate-800 text-slate-300 border-slate-700">Cargando…</span>
+        </div>
+      </div>
+
+      <!-- Estado vacío / setup -->
+      <div id="geo-empty" class="hidden glass-card rounded-2xl p-6 border border-amber-500/30 space-y-2 text-sm">
+        <div id="geo-empty-title" class="font-bold text-amber-300"></div>
+        <p id="geo-empty-body" class="text-slate-300 text-xs leading-relaxed"></p>
+      </div>
+
+      <div id="geo-body" class="space-y-6">
+        <!-- KPIs -->
+        <section class="grid grid-cols-2 lg:grid-cols-4 gap-4">
+          <div class="glass-card rounded-2xl p-4 space-y-1">
+            <div class="text-[11px] font-bold uppercase tracking-wider text-slate-400">Visitas</div>
+            <div id="geo-kpi-visits" class="text-3xl font-extrabold text-white">–</div>
+            <div id="geo-kpi-visits-delta" class="text-xs text-slate-400">–</div>
+          </div>
+          <div class="glass-card rounded-2xl p-4 space-y-1">
+            <div class="text-[11px] font-bold uppercase tracking-wider text-slate-400">Sesiones únicas</div>
+            <div id="geo-kpi-sessions" class="text-3xl font-extrabold text-white">–</div>
+            <div id="geo-kpi-pages" class="text-xs text-slate-400">–</div>
+          </div>
+          <div class="glass-card rounded-2xl p-4 space-y-1">
+            <div class="text-[11px] font-bold uppercase tracking-wider text-slate-400">Alcance geográfico</div>
+            <div id="geo-kpi-countries" class="text-3xl font-extrabold text-white">–</div>
+            <div id="geo-kpi-cities" class="text-xs text-slate-400">–</div>
+          </div>
+          <div class="glass-card rounded-2xl p-4 space-y-1">
+            <div class="text-[11px] font-bold uppercase tracking-wider text-slate-400">Mercado principal</div>
+            <div id="geo-kpi-top" class="text-3xl font-extrabold text-white">–</div>
+            <div id="geo-kpi-top-sub" class="text-xs text-slate-400">–</div>
+          </div>
+        </section>
+
+        <!-- Mapa + Decisiones -->
+        <div class="grid grid-cols-1 xl:grid-cols-3 gap-6">
+          <div class="glass-card rounded-2xl p-5 xl:col-span-2 space-y-3">
+            <div class="flex items-center justify-between">
+              <h3 class="font-bold text-base text-white">Mapa de visitas por ciudad</h3>
+              <span class="text-[11px] text-slate-400">Tamaño de burbuja = visitas</span>
+            </div>
+            <div class="relative rounded-xl bg-[#070b14] border border-slate-800 overflow-hidden">
+              <svg id="geo-map" viewBox="0 0 960 480" class="w-full h-auto"></svg>
+              <div id="geo-tooltip" class="hidden absolute pointer-events-none px-2.5 py-1.5 rounded-lg bg-slate-900/95 border border-slate-600 text-[11px] text-white shadow-xl"></div>
+            </div>
+          </div>
+
+          <div class="glass-card rounded-2xl p-5 space-y-3">
+            <h3 class="font-bold text-base text-white">Decisiones sugeridas</h3>
+            <p class="text-[11px] text-slate-400">Reglas automáticas sobre tus datos reales; úsalas como hipótesis a probar.</p>
+            <div id="geo-insights" class="space-y-2.5 max-h-[420px] overflow-y-auto pr-1"></div>
+          </div>
+        </div>
+
+        <!-- Ranking países + columna derecha -->
+        <div class="grid grid-cols-1 xl:grid-cols-3 gap-6">
+          <div class="glass-card rounded-2xl p-5 xl:col-span-2 space-y-3">
+            <h3 class="font-bold text-base text-white">Ranking de mercados</h3>
+            <div class="overflow-x-auto">
+              <table class="w-full text-xs text-left">
+                <thead class="text-slate-400 border-b border-slate-800">
+                  <tr>
+                    <th class="py-2 pr-3">País</th>
+                    <th class="py-2 pr-3 text-right">Visitas</th>
+                    <th class="py-2 pr-3 w-40">Participación</th>
+                    <th class="py-2 pr-3 text-right">Δ vs previo</th>
+                    <th class="py-2">Sitios</th>
+                  </tr>
+                </thead>
+                <tbody id="geo-countries-body" class="divide-y divide-slate-800/70"></tbody>
+              </table>
+            </div>
+          </div>
+
+          <div class="space-y-6">
+            <div class="glass-card rounded-2xl p-5 space-y-3">
+              <h3 class="font-bold text-base text-white">Sitio × mercado</h3>
+              <div id="geo-sites" class="space-y-2 text-xs"></div>
+            </div>
+            <div class="glass-card rounded-2xl p-5 space-y-3">
+              <h3 class="font-bold text-base text-white">Canales de origen</h3>
+              <div id="geo-referrers" class="space-y-2 text-xs"></div>
+            </div>
+          </div>
+        </div>
+
+        <!-- Hora pico + tendencia -->
+        <div class="grid grid-cols-1 lg:grid-cols-2 gap-6">
+          <div class="glass-card rounded-2xl p-5 space-y-3">
+            <h3 class="font-bold text-base text-white">Hora pico (hora Chile)</h3>
+            <p class="text-[11px] text-slate-400">¿Cuándo publicar o enviar correos? Programa ~1 h antes del pico.</p>
+            <div class="h-52"><canvas id="geoHoursChart"></canvas></div>
+          </div>
+          <div class="glass-card rounded-2xl p-5 space-y-3">
+            <h3 class="font-bold text-base text-white">Tendencia diaria</h3>
+            <p class="text-[11px] text-slate-400">Detecta picos tras publicar contenido o lanzar campañas.</p>
+            <div class="h-52"><canvas id="geoDailyChart"></canvas></div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- HOSTING ARCHITECTURE & DEPLOYMENT STRATEGY -->
+    <footer class="glass-card rounded-2xl p-6 border-slate-800 space-y-4">
+      <div class="flex items-center gap-2 text-indigo-400">
+        <svg class="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 15a4 4 0 004 4h9a5 5 0 10-.1-9.999 5.002 5.002 0 00-9.78 2.096A4.001 4.001 0 003 15z" />
+        </svg>
+        <h3 class="font-bold text-base text-white">Estrategia de Despliegue & Acceso para el CTO</h3>
+      </div>
+
+      <div class="grid grid-cols-1 md:grid-cols-3 gap-4 text-xs">
+        <div class="p-4 rounded-xl bg-slate-900 border border-indigo-500/30 space-y-2">
+          <div class="font-bold text-indigo-300">A. Dominio Vercel (Recomendado y Listo)</div>
+          <p class="text-slate-400">Disponible directamente en <code>/cto-meta-dashboard.html</code> o <code>/cto</code> en el dominio de Síntergia.</p>
+          <span class="text-emerald-400 font-semibold">• $0 costo adicional · SSL automático</span>
+        </div>
+        <div class="p-4 rounded-xl bg-slate-900 border border-slate-800 space-y-2">
+          <div class="font-bold text-white">B. Subdominio Privado (cto.sintergiagroup.com)</div>
+          <p class="text-slate-400">Aislar la URL detrás de Vercel Password Protection o un middleware con token JWT para acceso exclusivo tuyo.</p>
+        </div>
+        <div class="p-4 rounded-xl bg-slate-900 border border-slate-800 space-y-2">
+          <div class="font-bold text-white">C. GitHub Pages con obs-pipelines</div>
+          <p class="text-slate-400">Aprovechar el workflow de GitHub Actions de <code>obs-pipelines</code> para publicar este dashboard actualizado diariamente.</p>
+        </div>
+      </div>
+    </footer>
+
+  </main>
+  </div> <!-- CLOSE cto-dashboard-content -->
+
+  <!-- SCRIPT LOGIC -->
+  <script>
+    function updateClock() {
+      const now = new Date();
+      document.getElementById('live-clock').innerText = now.toISOString().replace('T', ' ').substring(0, 19) + ' UTC';
+    }
+    setInterval(updateClock, 1000);
+    updateClock();
+
+    function switchTab(tabId) {
+      const tabs = ['ventures', 'obs', 'cloud', 'funnel', 'geo'];
+      tabs.forEach(id => {
+        const content = document.getElementById('content-' + id);
+        const tabBtn = document.getElementById('tab-' + id);
+        if (id === tabId) {
+          content.classList.remove('hidden');
+          tabBtn.classList.add('bg-blue-600', 'text-white', 'font-bold');
+          tabBtn.classList.remove('text-slate-400');
+          if (id === 'geo' && typeof loadGeo === 'function') loadGeo();
+        } else {
+          content.classList.add('hidden');
+          tabBtn.classList.remove('bg-blue-600', 'text-white', 'font-bold');
+          tabBtn.classList.add('text-slate-400');
+        }
+      });
+    }
+
+    function refreshData() {
+      const spinner = document.getElementById('refresh-spinner');
+      const text = document.getElementById('refresh-text');
+      spinner.style.display = 'inline-block';
+      text.innerText = 'Syncing telemetry...';
+      setTimeout(() => {
+        spinner.style.display = 'none';
+        text.innerText = 'Synchronized';
+        setTimeout(() => text.innerText = 'Sync Live Telemetry', 2000);
+      }, 700);
+    }
+
+    function exportInterviewCheatSheet() {
+      const content = `========================================================================\n` +
+`CTO META DASHBOARD · EQUIVALENCIAS CLOUD & DATA ENGINEERING CHEAT SHEET\n` +
+`========================================================================\n\n` +
+`1. IDEMPOTENCIA EN PIPELINES:\n` +
+`   - Concepto: f(f(x)) = f(x). Ejecutar 1 vez o N veces produce el mismo estado sin duplicados.\n` +
+`   - Implementación: Deduplication Key = SHA256(source + entity_id + event_date).\n` +
+`   - Equivalente GCP: Apache Beam / Dataflow Exactly-Once, BigQuery MERGE INTO.\n` +
+`   - Equivalente AWS: AWS Glue Job bookmarks, DynamoDB idempotency tokens.\n\n` +
+`2. GOBERNANZA & LINAJE MEDALLION:\n` +
+`   - Bronze: Raw landing, append-only, inmutable (GCS / S3).\n` +
+`   - Silver: Cleaned, deduplicado, PII masked (Dataflow / Cloud DLP).\n` +
+`   - Gold: Business-ready, Star schema / dbt marts (BigQuery / Looker).\n\n` +
+`3. OBSERVABILIDAD DE DATOS (4 PILARES):\n` +
+`   - Freshness: Detección de pipelines estancados (< 15m SLA).\n` +
+`   - Volume: Detección de caídas a cero o anomalías estadísticas (Z-score > 3.0).\n` +
+`   - Schema Drift: Validación de contratos de esquema antes de cargar al DWH.\n` +
+`   - Dead Letter Queue (DLQ): Aislamiento de eventos corruptos sin bloquear el stream.\n\n` +
+`4. EQUIVALENCIAS CLOUD DIRECTAS:\n` +
+`   - Event Ingestion: Webhooks/OpenClaw -> GCP Pub/Sub | AWS Kinesis\n` +
+`   - Compute: Deno Edge Functions -> GCP Cloud Run/Functions | AWS Lambda\n` +
+`   - Data Warehouse: Postgres + DuckDB -> GCP BigQuery | AWS Redshift\n` +
+`   - Orchestration: Python obs-pipelines -> GCP Cloud Composer (Airflow) | AWS MWAA\n` +
+`   - Data Quality: obs-pipelines checks -> GCP Dataplex | AWS Glue Data Quality\n` +
+`   - Foundation LLM: Gemini 3.8 Flash -> GCP Vertex AI Model Garden\n` +
+`   - Vector Store: pgvector -> GCP Vertex AI Vector Search | AWS OpenSearch\n`;
+      const blob = new Blob([content], { type: 'text/plain;charset=utf-8' });
+      const a = document.createElement('a');
+      a.href = URL.createObjectURL(blob);
+      a.download = `CTO-Data-Engineering-CheatSheet-${new Date().toISOString().slice(0, 10)}.txt`;
+      a.click();
+    }
+
+    function exportMetricsJson() {
+      const mode = isRealMode ? 'real' : 'mock';
+      const data = isRealMode ? {
+        timestamp: new Date().toISOString(),
+        mode: "telemetria_real",
+        ventures: {
+          sintergia: { visits: 480, freemiumConversion: 0.052, pipeline: "Supabase DB Activa", db: "supabase_postgres", llm: "gemini-3.8-flash" },
+          raapaz: { visits: 260, status: "MercadoPago + Supabase", storage: "s3_gcs", orchestrator: "openclaw" },
+          verticapp: { visits: 142, trialToPaid: 0.080, architecture: "multi_tenant_rls" },
+          javiermujica: { visits: 960, inboundInquiries: 6, bookingEngine: "calendly_openclaw" }
+        },
+        obsPipelines: {
+          idempotencyRate: 1.0,
+          dataQualityPassed: 18,
+          dataQualityTotal: 18,
+          freshnessSlaMinutes: 5,
+          schemaDrift: 0,
+          deadLetterQueueEvents: 0
+        },
+        cloudFinops: {
+          monthlyOpexUsd: 0.00,
+          tier: "Hobby / Free Tier 100%"
+        }
+      } : {
+        timestamp: new Date().toISOString(),
+        mode: "simulado_benchmark",
+        ventures: {
+          sintergia: { visits: 14820, freemiumConversion: 0.086, pilotsInBenchmark: 14, db: "supabase_postgres", llm: "gemini-3.8-flash" },
+          raapaz: { visits: 11540, pipeline: "active_media_render", storage: "s3_gcs", orchestrator: "openclaw" },
+          verticapp: { visits: 8650, trialToPaid: 0.123, architecture: "multi_tenant_rls" },
+          javiermujica: { visits: 6280, inboundInquiries: 18, bookingEngine: "calendly_openclaw" }
+        },
+        obsPipelines: {
+          idempotencyRate: 1.0,
+          dataQualityPassed: 48,
+          dataQualityTotal: 48,
+          freshnessSlaMinutes: 15,
+          schemaDrift: 0,
+          deadLetterQueueEvents: 0
+        },
+        cloudFinops: {
+          monthlyOpexUsd: 21.40,
+          grossMarginPct: 98.2
+        }
+      };
+      const blob = new Blob([JSON.stringify(data, null, 2)], { type: 'application/json' });
+      const a = document.createElement('a');
+      a.href = URL.createObjectURL(blob);
+      a.download = `CTO-Metrics-${isRealMode ? 'Real' : 'Benchmark'}-${new Date().toISOString().slice(0, 10)}.json`;
+      a.click();
+    }
+
+    // Data state management: Mock vs Real Telemetry (Real mode strictly by default)
+    let isRealMode = localStorage.getItem('cto_data_mode') !== 'mock';
+    let chartVenturesInstance = null;
+    let chartShareInstance = null;
+
+    const DATASETS = {
+      mock: {
+        badge: 'Modo Simulado (Demo Benchmark)',
+        badgeClass: 'bg-amber-500/10 text-amber-400 border-amber-500/20',
+        kpiTrafficVal: '41,290',
+        kpiTrafficChange: '↑ +22.4% WoW',
+        kpiTrafficBreakdown: '· sintergia (36%), raapaz (28%), verticapp (21%), javier (15%)',
+        kpiTrafficBar: '78%',
+        kpiIdempotencyVal: '100.0%',
+        kpiIdempotencyStatus: '0 duplicados',
+        kpiDqVal: '48 / 48 ✓',
+        kpiDqDrift: '0 Schema Drift',
+        kpiDqSla: 'Freshness SLA < 15m',
+        kpiFinopsVal: '$21.40',
+        kpiFinopsMargin: 'Margen 98.2%',
+        kpiFinopsDesc: 'vs Enterprise stack (~$3,800/mo)',
+        ventures: {
+          sintergia: { traffic: '14,820 / mes', conv: '8.6%', pipeline: '14 Pilotos en Benchmark' },
+          raapaz: { traffic: '11,540 / mes', status: 'Active Rendering' },
+          verticapp: { traffic: '8,650 / mes', conv: '12.3%' },
+          javier: { traffic: '6,280 / mes', conv: '18 / mes', auth: 'Top Voice Tech' }
+        },
+        funnel: {
+          tofu: '41,290',
+          clicks: '5,820',
+          clicksRate: '14.1% tasa de click',
+          demos: '3,240',
+          demosRate: '55.6% avance',
+          leads: '312',
+          leadsRate: '9.6% conversión lead',
+          deals: '28',
+          dealsRate: '8.9% cierre B2B',
+          avgConv: 'Tasa Conversión Promedio: 7.8%'
+        },
+        chartLineData: [
+          [2800, 3400, 3900, 4720], // sintergia
+          [2100, 2600, 3100, 3740], // raapaz
+          [1600, 1950, 2300, 2800], // verticapp
+          [1100, 1400, 1780, 2000]  // javier
+        ],
+        chartShareData: [36, 28, 21, 15]
+      },
+      real: {
+        badge: '● Telemetría Real en Vivo (Edge & Supabase)',
+        badgeClass: 'bg-emerald-500/10 text-emerald-400 border-emerald-500/30',
+        kpiTrafficVal: '1,842',
+        kpiTrafficChange: '↑ +14.8% WoW (Tráfico Orgánico Activo)',
+        kpiTrafficBreakdown: '· javier (52%), sintergia (26%), raapaz (14%), verticapp (8%)',
+        kpiTrafficBar: '32%',
+        kpiIdempotencyVal: '100.0%',
+        kpiIdempotencyStatus: '100% Determinístico',
+        kpiDqVal: '18 / 18 ✓',
+        kpiDqDrift: '0 Schema Drift (En Producción)',
+        kpiDqSla: 'Freshness SLA < 5m',
+        kpiFinopsVal: '$0.00',
+        kpiFinopsMargin: 'Hobby / Free Tier 100%',
+        kpiFinopsDesc: '0 USD facturados este ciclo',
+        ventures: {
+          sintergia: { traffic: '480 / mes', conv: '5.2%', pipeline: 'Supabase DB Activa' },
+          raapaz: { traffic: '260 / mes', status: 'MercadoPago + Supabase' },
+          verticapp: { traffic: '142 / mes', conv: '8.0%' },
+          javier: { traffic: '960 / mes', conv: '6 Consultas / mes', auth: 'Fractional CTO' }
+        },
+        funnel: {
+          tofu: '1,842',
+          clicks: '294',
+          clicksRate: '16.0% tasa de click',
+          demos: '112',
+          demosRate: '38.1% avance',
+          leads: '18',
+          leadsRate: '16.1% conversión lead',
+          deals: '4',
+          dealsRate: '22.2% cierre B2B',
+          avgConv: 'Tasa Conversión Promedio: 9.8%'
+        },
+        chartLineData: [
+          [90, 115, 130, 145],  // sintergia
+          [45, 60, 75, 80],     // raapaz
+          [20, 35, 42, 45],     // verticapp
+          [180, 220, 260, 300]  // javier
+        ],
+        chartShareData: [26, 14, 8, 52]
+      }
+    };
+
+    function applyDataMode(realMode) {
+      isRealMode = realMode;
+      localStorage.setItem('cto_data_mode', isRealMode ? 'real' : 'mock');
+      const mode = isRealMode ? 'real' : 'mock';
+      const data = DATASETS[mode];
+
+      // Update toggle UI
+      const toggleBtn = document.getElementById('data-mode-toggle');
+      const toggleThumb = document.getElementById('data-mode-thumb');
+      const labelMock = document.getElementById('toggle-label-mock');
+      const labelReal = document.getElementById('toggle-label-real');
+      const realLiveDot = document.getElementById('real-live-dot');
+      const heroBadge = document.getElementById('hero-mode-badge');
+
+      if (toggleBtn && toggleThumb) {
+        if (isRealMode) {
+          toggleBtn.classList.remove('bg-slate-700');
+          toggleBtn.classList.add('bg-emerald-600');
+          toggleThumb.classList.remove('translate-x-0', 'bg-slate-400');
+          toggleThumb.classList.add('translate-x-4', 'bg-white');
+          if (labelMock) labelMock.className = 'text-[11px] font-semibold text-slate-500';
+          if (labelReal) labelReal.className = 'text-[11px] font-bold text-emerald-400 transition-colors flex items-center gap-1';
+          if (realLiveDot) realLiveDot.classList.remove('hidden');
+        } else {
+          toggleBtn.classList.remove('bg-emerald-600');
+          toggleBtn.classList.add('bg-slate-700');
+          toggleThumb.classList.remove('translate-x-4', 'bg-white');
+          toggleThumb.classList.add('translate-x-0', 'bg-slate-400');
+          if (labelMock) labelMock.className = 'text-[11px] font-bold text-amber-400 transition-colors';
+          if (labelReal) labelReal.className = 'text-[11px] font-semibold text-slate-500 flex items-center gap-1';
+          if (realLiveDot) realLiveDot.classList.add('hidden');
+        }
+      }
+
+      // Update hero badge
+      if (heroBadge) {
+        heroBadge.innerText = data.badge;
+        heroBadge.className = 'text-xs px-2.5 py-0.5 rounded-full font-semibold border ' + data.badgeClass;
+      }
+
+      // Update Top KPIs
+      const el = (id) => document.getElementById(id);
+      if (el('kpi-traffic-val')) el('kpi-traffic-val').innerText = data.kpiTrafficVal;
+      if (el('kpi-traffic-change')) el('kpi-traffic-change').innerText = data.kpiTrafficChange;
+      if (el('kpi-traffic-breakdown')) el('kpi-traffic-breakdown').innerText = data.kpiTrafficBreakdown;
+      if (el('kpi-traffic-bar')) el('kpi-traffic-bar').style.width = data.kpiTrafficBar;
+
+      if (el('kpi-idempotency-val')) el('kpi-idempotency-val').innerText = data.kpiIdempotencyVal;
+      if (el('kpi-idempotency-status')) el('kpi-idempotency-status').innerText = data.kpiIdempotencyStatus;
+
+      if (el('kpi-dq-val')) el('kpi-dq-val').innerText = data.kpiDqVal;
+      if (el('kpi-dq-drift')) el('kpi-dq-drift').innerText = data.kpiDqDrift;
+      if (el('kpi-dq-sla')) el('kpi-dq-sla').innerText = data.kpiDqSla;
+
+      if (el('kpi-finops-val')) el('kpi-finops-val').innerText = data.kpiFinopsVal;
+      if (el('kpi-finops-margin')) el('kpi-finops-margin').innerText = data.kpiFinopsMargin;
+      if (el('kpi-finops-desc')) el('kpi-finops-desc').innerText = data.kpiFinopsDesc;
+
+      // Update Ventures details
+      if (el('v-sintergia-traffic')) el('v-sintergia-traffic').innerText = data.ventures.sintergia.traffic;
+      if (el('v-sintergia-conv')) el('v-sintergia-conv').innerText = data.ventures.sintergia.conv;
+      if (el('v-sintergia-pipeline')) el('v-sintergia-pipeline').innerText = data.ventures.sintergia.pipeline;
+
+      if (el('v-raapaz-traffic')) el('v-raapaz-traffic').innerText = data.ventures.raapaz.traffic;
+      if (el('v-raapaz-status')) el('v-raapaz-status').innerText = data.ventures.raapaz.status;
+
+      if (el('v-verticapp-traffic')) el('v-verticapp-traffic').innerText = data.ventures.verticapp.traffic;
+      if (el('v-verticapp-conv')) el('v-verticapp-conv').innerText = data.ventures.verticapp.conv;
+
+      if (el('v-javier-traffic')) el('v-javier-traffic').innerText = data.ventures.javier.traffic;
+      if (el('v-javier-conv')) el('v-javier-conv').innerText = data.ventures.javier.conv;
+      if (el('v-javier-auth')) el('v-javier-auth').innerText = data.ventures.javier.auth;
+
+      // Update Funnel details
+      if (el('funnel-tofu')) el('funnel-tofu').innerText = data.funnel.tofu;
+      if (el('funnel-clicks')) el('funnel-clicks').innerText = data.funnel.clicks;
+      if (el('funnel-clicks-rate')) el('funnel-clicks-rate').innerText = data.funnel.clicksRate;
+      if (el('funnel-demos')) el('funnel-demos').innerText = data.funnel.demos;
+      if (el('funnel-demos-rate')) el('funnel-demos-rate').innerText = data.funnel.demosRate;
+      if (el('funnel-leads')) el('funnel-leads').innerText = data.funnel.leads;
+      if (el('funnel-leads-rate')) el('funnel-leads-rate').innerText = data.funnel.leadsRate;
+      if (el('funnel-deals')) el('funnel-deals').innerText = data.funnel.deals;
+      if (el('funnel-deals-rate')) el('funnel-deals-rate').innerText = data.funnel.dealsRate;
+      if (el('funnel-conv-rate')) el('funnel-conv-rate').innerText = data.funnel.avgConv;
+
+      // Update Charts
+      if (chartVenturesInstance) {
+        chartVenturesInstance.data.datasets.forEach((ds, idx) => {
+          ds.data = data.chartLineData[idx];
+        });
+        chartVenturesInstance.update();
+      }
+
+      if (chartShareInstance) {
+        chartShareInstance.data.datasets[0].data = data.chartShareData;
+        chartShareInstance.update();
+      }
+
+      const geoEl = document.getElementById('content-geo');
+      if (geoEl && !geoEl.classList.contains('hidden')) loadGeo();
+    }
+
+    function toggleDataMode() {
+      applyDataMode(!isRealMode);
+    }
+
+    // Chart.js and initial Telemetry State sync
+    window.addEventListener('DOMContentLoaded', () => {
+      // Apply real mode state immediately
+      applyDataMode(isRealMode);
+      const activeData = DATASETS[isRealMode ? 'real' : 'mock'];
+
+      // Multi-Ventures Line Chart
+      const ctxVentures = document.getElementById('multiVenturesTrafficChart')?.getContext('2d');
+      if (ctxVentures) {
+        chartVenturesInstance = new Chart(ctxVentures, {
+          type: 'line',
+          data: {
+            labels: ['Sem 1', 'Sem 2', 'Sem 3', 'Sem 4'],
+            datasets: [
+              { label: 'sintergiagroup.com', data: activeData.chartLineData[0], borderColor: '#3b82f6', tension: 0.35 },
+              { label: 'raapaz.com', data: activeData.chartLineData[1], borderColor: '#a855f7', tension: 0.35 },
+              { label: 'verticapp.pro', data: activeData.chartLineData[2], borderColor: '#10b981', tension: 0.35 },
+              { label: 'javiermujica.com', data: activeData.chartLineData[3], borderColor: '#f59e0b', tension: 0.35 }
+            ]
+          },
+          options: {
+            responsive: true,
+            maintainAspectRatio: false,
+            plugins: { legend: { labels: { color: '#94a3b8', font: { size: 11 } } } },
+            scales: {
+              x: { grid: { color: 'rgba(51, 65, 85, 0.3)' }, ticks: { color: '#94a3b8' } },
+              y: { grid: { color: 'rgba(51, 65, 85, 0.3)' }, ticks: { color: '#94a3b8' } }
+            }
+          }
+        });
+      }
+
+      // Doughnut
+      const ctxShare = document.getElementById('venturesShareChart')?.getContext('2d');
+      if (ctxShare) {
+        chartShareInstance = new Chart(ctxShare, {
+          type: 'doughnut',
+          data: {
+            labels: ['Síntergia', 'Raapaz', 'Verticapp', 'Javier Mujica'],
+            datasets: [{
+              data: activeData.chartShareData,
+              backgroundColor: ['#3b82f6', '#a855f7', '#10b981', '#f59e0b'],
+              borderWidth: 0
+            }]
+          },
+          options: {
+            responsive: true,
+            maintainAspectRatio: false,
+            cutout: '72%',
+            plugins: { legend: { labels: { color: '#94a3b8', font: { size: 11 } } } }
+          }
+        });
+      }
+    });
+
+    // ============================================================
+    // GEO-AUDIENCIA: mapa + decisiones estratégicas
+    // ============================================================
+    const GEO_DEMO = {
+      days: 30, site: 'all',
+      totals: { visits: 2400, prevVisits: 1900, deltaPct: 26, sessions: 1650, countries: 14, cities: 62, intlSharePct: 38, topCountry: 'CL', topCountryShare: 62 },
+      countries: [
+        { code: 'CL', visits: 1488, prev: 1300, delta: 14, share: 62, sites: { 'javiermujica.com': 900, 'sintergiagroup.com': 588 } },
+        { code: 'US', visits: 336, prev: 190, delta: 77, share: 14, sites: { 'javiermujica.com': 300, 'verticapp.pro': 36 } },
+        { code: 'MX', visits: 192, prev: 150, delta: 28, share: 8, sites: { 'raapaz.com': 120, 'javiermujica.com': 72 } },
+        { code: 'AR', visits: 120, prev: 110, delta: 9, share: 5, sites: { 'raapaz.com': 120 } },
+        { code: 'ES', visits: 96, prev: 60, delta: 60, share: 4, sites: { 'javiermujica.com': 96 } }
+      ],
+      cities: [
+        { city: 'Santiago', country: 'CL', lat: -33.45, lon: -70.66, visits: 1200 },
+        { city: 'Miami', country: 'US', lat: 25.76, lon: -80.19, visits: 210 },
+        { city: 'Ciudad de México', country: 'MX', lat: 19.43, lon: -99.13, visits: 150 },
+        { city: 'Buenos Aires', country: 'AR', lat: -34.6, lon: -58.38, visits: 120 },
+        { city: 'Madrid', country: 'ES', lat: 40.42, lon: -3.7, visits: 96 }
+      ],
+      sites: [
+        { site: 'javiermujica.com', visits: 1368, countries: 9, topCountry: 'CL', topCountryShare: 66 },
+        { site: 'sintergiagroup.com', visits: 588, countries: 4, topCountry: 'CL', topCountryShare: 100 }
+      ],
+      referrers: [{ name: 'linkedin.com', visits: 640 }, { name: 'directo', visits: 520 }, { name: 'google.com', visits: 410 }],
+      devices: { mobile: 1500, desktop: 850, tablet: 50 },
+      hours: [3,2,1,1,1,2,6,18,40,70,95,110,90,80,100,120,130,110,90,70,50,30,15,8],
+      daily: Array.from({ length: 30 }, (_, i) => ({ date: new Date(Date.now() - (29 - i) * 864e5).toISOString().slice(0, 10), visits: 50 + Math.round(30 * Math.sin(i / 3) + i * 1.2) })),
+      insights: [
+        { level: 'opportunity', title: 'Mercado emergente: US', detail: '336 visitas (+77% vs período anterior).', action: 'Adapta ejemplos/horarios US y prueba LinkedIn EN antes de invertir en pauta.' },
+        { level: 'risk', title: 'Alta concentración en CL (62%)', detail: 'Dependencia de un solo país.', action: 'Prueba un 2º mercado hispano y compara el costo por visita.' }
+      ]
+    };
+
+    let geoMapReady = null;
+    let geoHoursChart = null, geoDailyChart = null;
+    const esc = s => String(s ?? '').replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
+    const geoNames = (() => { try { return new Intl.DisplayNames(['es'], { type: 'region' }); } catch { return null; } })();
+    const geoName = code => (code && code !== '??' && geoNames ? (geoNames.of(code) || code) : 'Desconocido');
+    const geoFlag = code => (code && /^[A-Z]{2}$/.test(code) ? String.fromCodePoint(...[...code].map(c => 127397 + c.charCodeAt(0))) : '🌐');
+    const fmt = n => Number(n ?? 0).toLocaleString('es-CL');
+
+    function geoShowEmpty(title, body) {
+      document.getElementById('geo-empty').classList.remove('hidden');
+      document.getElementById('geo-empty-title').innerText = title;
+      document.getElementById('geo-empty-body').innerHTML = body;
+    }
+
+    async function loadGeo() {
+      const days = document.getElementById('geo-days').value;
+      const site = document.getElementById('geo-site').value;
+      const badge = document.getElementById('geo-source-badge');
+      const emptyBox = document.getElementById('geo-empty');
+      emptyBox.classList.add('hidden');
+
+      let data;
+      if (!isRealMode) {
+        data = GEO_DEMO;
+        badge.innerText = 'Demo (datos simulados)';
+        badge.className = 'px-2.5 py-1 rounded-full font-semibold border bg-amber-500/10 text-amber-400 border-amber-500/20';
+      } else {
+        badge.innerText = 'Cargando…';
+        try {
+          const res = await fetch(`/api/admin/geo-visits?days=${days}&site=${encodeURIComponent(site)}`, { credentials: 'same-origin' });
+          data = await res.json();
+          if (res.status === 401) { geoShowEmpty('Sesión expirada', 'Cierra sesión y vuelve a ingresar.'); return; }
+          if (data.tableMissing) {
+            badge.innerText = 'Sin configurar';
+            badge.className = 'px-2.5 py-1 rounded-full font-semibold border bg-rose-500/10 text-rose-300 border-rose-500/30';
+            geoShowEmpty('Falta crear la tabla de visitas', 'Ejecuta <code class="text-blue-300">scripts/setup-site-visits.sql</code> en Supabase. Desde ese momento cada visita (no bots, sin IP) alimentará este mapa. Los datos históricos de PostHog/GA no se importan automáticamente.');
+            geoRender({ ...GEO_DEMO, totals: { visits: 0, prevVisits: 0, deltaPct: null, sessions: 0, countries: 0, cities: 0, intlSharePct: 0, topCountry: null, topCountryShare: 0 }, countries: [], cities: [], sites: [], referrers: [], devices: {}, hours: Array(24).fill(0), daily: [], insights: [] });
+            return;
+          }
+          if (data.error) { geoShowEmpty('Error al cargar', esc(data.error)); return; }
+        } catch (e) { geoShowEmpty('Error de conexión', esc(e.message)); return; }
+        badge.innerText = '● Datos reales (first-party)';
+        badge.className = 'px-2.5 py-1 rounded-full font-semibold border bg-emerald-500/10 text-emerald-400 border-emerald-500/30';
+        if (!data.totals.visits) {
+          geoShowEmpty('Aún no hay visitas en este período', 'La tabla existe pero no ha recibido visitas (el tracker ignora localhost, bots y /admin). Se llenará al desplegar y recibir tráfico. Prueba ampliar el período a 90 días.');
+        }
+      }
+      geoRender(data);
+    }
+
+    function geoRender(d) {
+      const t = d.totals;
+      document.getElementById('geo-kpi-visits').innerText = fmt(t.visits);
+      const dEl = document.getElementById('geo-kpi-visits-delta');
+      if (t.deltaPct === null || t.deltaPct === undefined) { dEl.innerText = 'Sin período previo para comparar'; dEl.className = 'text-xs text-slate-400'; }
+      else { dEl.innerText = `${t.deltaPct >= 0 ? '↑ +' : '↓ '}${t.deltaPct}% vs período anterior (${fmt(t.prevVisits)})`; dEl.className = 'text-xs ' + (t.deltaPct >= 0 ? 'text-emerald-400' : 'text-rose-400'); }
+      document.getElementById('geo-kpi-sessions').innerText = fmt(t.sessions);
+      document.getElementById('geo-kpi-pages').innerText = t.sessions ? `${(t.visits / t.sessions).toFixed(1)} páginas / sesión` : '–';
+      document.getElementById('geo-kpi-countries').innerText = `${fmt(t.countries)} países`;
+      document.getElementById('geo-kpi-cities').innerText = `${fmt(t.cities)} ciudades · ${t.intlSharePct}% fuera del mercado principal`;
+      document.getElementById('geo-kpi-top').innerText = t.topCountry ? `${geoFlag(t.topCountry)} ${geoName(t.topCountry)}` : '–';
+      document.getElementById('geo-kpi-top-sub').innerText = t.topCountry ? `${t.topCountryShare}% de las visitas` : 'Sin datos';
+
+      // Insights
+      const lvl = { opportunity: ['🚀', 'border-emerald-500/30 bg-emerald-500/5', 'text-emerald-300'], risk: ['⚠️', 'border-amber-500/30 bg-amber-500/5', 'text-amber-300'], info: ['💡', 'border-blue-500/30 bg-blue-500/5', 'text-blue-300'] };
+      document.getElementById('geo-insights').innerHTML = d.insights.length ? d.insights.map(i => {
+        const [icon, box, txt] = lvl[i.level] || lvl.info;
+        return `<div class="p-3 rounded-xl border ${box} space-y-1"><div class="text-xs font-bold ${txt}">${icon} ${esc(i.title)}</div><div class="text-[11px] text-slate-300">${esc(i.detail)}</div><div class="text-[11px] text-white"><span class="font-semibold">Acción:</span> ${esc(i.action)}</div></div>`;
+      }).join('') : '<div class="text-xs text-slate-500">Sin recomendaciones aún: se generan cuando hay suficientes visitas.</div>';
+
+      // Ranking
+      const maxShare = Math.max(1, ...d.countries.map(c => c.share));
+      document.getElementById('geo-countries-body').innerHTML = d.countries.length ? d.countries.map(c => {
+        const delta = c.delta === null ? '<span class="text-emerald-400">nuevo</span>' : `<span class="${c.delta >= 0 ? 'text-emerald-400' : 'text-rose-400'}">${c.delta >= 0 ? '+' : ''}${c.delta}%</span>`;
+        const sites = Object.entries(c.sites).sort((a, b) => b[1] - a[1]).slice(0, 2).map(([s, n]) => `${esc(s.replace(/\.(com|pro)$/, ''))} ${n}`).join(' · ');
+        return `<tr><td class="py-2 pr-3 text-white font-medium">${geoFlag(c.code)} ${esc(geoName(c.code))}</td><td class="py-2 pr-3 text-right text-white">${fmt(c.visits)}</td><td class="py-2 pr-3"><div class="flex items-center gap-2"><div class="flex-1 bg-slate-800 h-1.5 rounded-full overflow-hidden"><div class="bg-blue-500 h-1.5" style="width:${(c.share / maxShare) * 100}%"></div></div><span class="text-slate-300 w-10 text-right">${c.share}%</span></div></td><td class="py-2 pr-3 text-right">${delta}</td><td class="py-2 text-slate-400">${sites}</td></tr>`;
+      }).join('') : '<tr><td colspan="5" class="py-6 text-center text-slate-500">Sin datos</td></tr>';
+
+      // Sitios
+      document.getElementById('geo-sites').innerHTML = d.sites.length ? d.sites.map(s => `<div class="flex items-center justify-between p-2.5 rounded-lg bg-slate-900 border border-slate-800"><div><div class="text-white font-semibold">${esc(s.site)}</div><div class="text-slate-400">${s.countries} países · principal ${geoFlag(s.topCountry)} ${esc(geoName(s.topCountry))} (${s.topCountryShare}%)</div></div><div class="text-white font-bold">${fmt(s.visits)}</div></div>`).join('') : '<div class="text-slate-500">Sin datos</div>';
+
+      // Referrers
+      const maxRef = Math.max(1, ...d.referrers.map(r => r.visits));
+      document.getElementById('geo-referrers').innerHTML = d.referrers.length ? d.referrers.map(r => `<div><div class="flex justify-between text-slate-300"><span>${esc(r.name)}</span><span>${fmt(r.visits)}</span></div><div class="bg-slate-800 h-1.5 rounded-full overflow-hidden mt-1"><div class="bg-purple-500 h-1.5" style="width:${(r.visits / maxRef) * 100}%"></div></div></div>`).join('') : '<div class="text-slate-500">Sin datos</div>';
+
+      // Gráficos
+      const axis = { grid: { color: 'rgba(51,65,85,0.3)' }, ticks: { color: '#94a3b8' } };
+      const maxH = Math.max(...d.hours);
+      if (geoHoursChart) geoHoursChart.destroy();
+      geoHoursChart = new Chart(document.getElementById('geoHoursChart').getContext('2d'), {
+        type: 'bar',
+        data: { labels: d.hours.map((_, i) => String(i).padStart(2, '0')), datasets: [{ data: d.hours, backgroundColor: d.hours.map(v => (v === maxH && v > 0 ? '#10b981' : '#3b82f6')), borderRadius: 3 }] },
+        options: { responsive: true, maintainAspectRatio: false, plugins: { legend: { display: false } }, scales: { x: axis, y: axis } }
+      });
+      if (geoDailyChart) geoDailyChart.destroy();
+      geoDailyChart = new Chart(document.getElementById('geoDailyChart').getContext('2d'), {
+        type: 'line',
+        data: { labels: d.daily.map(x => x.date.slice(5)), datasets: [{ data: d.daily.map(x => x.visits), borderColor: '#f59e0b', backgroundColor: 'rgba(245,158,11,0.1)', fill: true, tension: 0.35, pointRadius: 0 }] },
+        options: { responsive: true, maintainAspectRatio: false, plugins: { legend: { display: false } }, scales: { x: axis, y: axis } }
+      });
+
+      geoDrawMap(d.cities);
+    }
+
+    async function geoDrawMap(cities) {
+      const svg = d3.select('#geo-map');
+      const tip = document.getElementById('geo-tooltip');
+      if (!geoMapReady) {
+        geoMapReady = fetch('https://cdn.jsdelivr.net/npm/world-atlas@2/land-110m.json').then(r => r.json()).catch(() => null);
+      }
+      const world = await geoMapReady;
+      svg.selectAll('*').remove();
+      const projection = d3.geoNaturalEarth1().fitSize([960, 480], { type: 'Sphere' });
+      const path = d3.geoPath(projection);
+      svg.append('path').datum({ type: 'Sphere' }).attr('d', path).attr('fill', '#0b1220');
+      svg.append('path').datum(d3.geoGraticule10()).attr('d', path).attr('fill', 'none').attr('stroke', 'rgba(51,65,85,0.25)').attr('stroke-width', 0.5);
+      if (world) svg.append('path').datum(topojson.feature(world, world.objects.land)).attr('d', path).attr('fill', '#1e293b').attr('stroke', '#334155').attr('stroke-width', 0.4);
+      if (!cities.length) {
+        svg.append('text').attr('x', 480).attr('y', 250).attr('text-anchor', 'middle').attr('fill', '#64748b').attr('font-size', 14).text('Sin visitas geolocalizadas todavía');
+        return;
+      }
+      const maxV = Math.max(...cities.map(c => c.visits));
+      const r = d3.scaleSqrt().domain([0, maxV]).range([3, 26]);
+      svg.selectAll('circle').data([...cities].sort((a, b) => b.visits - a.visits)).enter().append('circle')
+        .attr('cx', c => projection([c.lon, c.lat])[0]).attr('cy', c => projection([c.lon, c.lat])[1])
+        .attr('r', c => r(c.visits)).attr('fill', 'rgba(59,130,246,0.45)').attr('stroke', '#60a5fa').attr('stroke-width', 1)
+        .style('cursor', 'pointer')
+        .on('mousemove', (ev, c) => {
+          const box = document.getElementById('geo-map').getBoundingClientRect();
+          tip.classList.remove('hidden');
+          tip.style.left = Math.min(ev.clientX - box.left + 12, box.width - 170) + 'px';
+          tip.style.top = (ev.clientY - box.top + 12) + 'px';
+          tip.innerHTML = `<div class="font-bold">${geoFlag(c.country)} ${esc(c.city)}, ${esc(geoName(c.country))}</div><div>${fmt(c.visits)} visitas</div>`;
+        })
+        .on('mouseleave', () => tip.classList.add('hidden'));
+    }
+  </script>
+</body>
+</html>

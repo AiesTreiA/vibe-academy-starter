@@ -1,0 +1,20 @@
+# Javier Mujica · Consultoría en IA y Automatización de Procesos
+
+> Consultoría especializada en automatización RPA (Python, Go), integraciones de APIs (Make, Zapier, n8n), rediseño de procesos operativos y consultoría adaptativa (neurodivergent-friendly) para empresas y profesionales en Chile y Latinoamérica.
+
+## Servicios Principales
+- [Rediseño de Procesos](https://www.javiermujica.com/#servicios): Mapeo y simplificación de flujos de trabajo operativos para eliminar cuellos de botella y liberar hasta 30% del tiempo semanal.
+- [Automatización RPA y APIs](https://www.javiermujica.com/#servicios): Bots de software e integraciones de datos para automatización administrativa, comercial y operacional.
+- [Consultoría Estratégica Adaptativa](https://www.javiermujica.com/#servicios): Enfoque flexible orientado a resultados reales, neurodivergent-friendly (orientado a altas capacidades y neurodiversidades).
+- [Automatización para Marca Personal](https://www.javiermujica.com/#servicios): Ecosistema digital automatizado de agendamiento, cobros y seguimiento para terapeutas, psicólogos y profesionales del bienestar.
+- [Bootcamp Vibecode Lab](https://www.javiermujica.com/vibecode): Formación práctica intensiva para crear y monetizar soluciones digitales con inteligencia artificial y automatizaciones.
+
+## Trayectoria y Clientes
+- Consultor en optimización de operaciones para empresas como CCU, Transbank, Antü Energía, Roboris y Mundos Virtuales.
+- Ingeniero Civil Industrial de la Universidad de Chile.
+
+## Contacto y Agendamiento
+- Sitio Web: https://www.javiermujica.com
+- Agenda de Diagnóstico: https://www.javiermujica.com/#contacto
+- Correo Electrónico: hola@javiermujica.com
+- LinkedIn: https://www.linkedin.com/in/javier-mujica-aa32291a/

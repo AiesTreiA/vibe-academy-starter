@@ -1,0 +1,33 @@
+name: supabase-keepalive
+on:
+  schedule:
+    - cron: '*/30 * * * *' # cada 3 días a medianoche UTC
+  workflow_dispatch: {}
+
+jobs:
+  keepalive:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Build timestamp
+        id: ts
+        run: echo "TIMESTAMP=$(date -u +'%Y-%m-%dT%H:%M:%SZ')" >> $GITHUB_ENV
+      - name: Ping Supabase keepalive (INSERT or PATCH)
+        env:
+          SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
+          SUPABASE_ANON_KEY: ${{ secrets.SUPABASE_ANON_KEY }}
+          TIMESTAMP: ${{ env.TIMESTAMP }}
+        run: |
+         curl -sS -X POST "${SUPABASE_URL}/rest/v1/keepalive" \
+          -H "apikey: ${SUPABASE_ANON_KEY}" \
+          -H "Authorization: Bearer ${SUPABASE_ANON_KEY}" \
+          -H "Content-Type: application/json" \
+          -H "Prefer: return=representation" \
+          -d "{\"id\":1,\"last_ping\":\"${TIMESTAMP}\"}" --fail || \
+         curl -sS -X PATCH "${SUPABASE_URL}/rest/v1/keepalive?id=eq.1" \
+          -H "apikey: ${SUPABASE_ANON_KEY}" \
+          -H "Authorization: Bearer ${SUPABASE_ANON_KEY}" \
+          -H "Content-Type: application/json" \
+          -H "Prefer: return=representation" \
+          -d "{\"last_ping\":\"${TIMESTAMP}\"}" --fail
+
+        
